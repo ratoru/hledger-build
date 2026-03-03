@@ -85,7 +85,7 @@ func runPipeline(ctx context.Context, mode passMode) error {
 	opts := runOpts(cfg)
 
 	if mode == passAll || mode == passIngest {
-		if err := execPass(ctx, mf, opts, "Pass 1: Ingest", pass1Steps); err != nil {
+		if err := execPass(ctx, mf, opts, "1. Ingesting Files", pass1Steps); err != nil {
 			_ = mf.Save(mfPath)
 			return err
 		}
@@ -96,7 +96,7 @@ func runPipeline(ctx context.Context, mode passMode) error {
 		if err != nil {
 			return fmt.Errorf("generating report steps: %w", err)
 		}
-		if err := execPass(ctx, mf, opts, "Pass 2: Reports", pass2Steps); err != nil {
+		if err := execPass(ctx, mf, opts, "2. Generating Reports", pass2Steps); err != nil {
 			_ = mf.Save(mfPath)
 			return err
 		}

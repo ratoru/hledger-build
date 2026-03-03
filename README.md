@@ -14,10 +14,11 @@ consolidate the information here in one place for you.
 I suggest reading my guides in the following order:
 
 1. [Why track your finances?](<./docs/01 Track your finances.md>)
-2. [Understand accounting principles](<./docs/02 Understand accounting principles.md>)
+2. [Learn accounting principles](<./docs/02 Learn accounting principles.md>)
 3. [Automate your accounting](<./docs/03 Automate your accounting.md>)
 4. [How to use hledger-build](<./docs/04 How to use hledger-build.md>)
-5. [Use AI to interact with your finances](<./docs/05 Use AI to interact with your finances.md>)
+5. [Track investments](<./docs/05 Track investments.md>)
+6. [Use AI to interact with your finances](<./docs/06 Use AI to interact with your finances.md>)
 
 If you'd like to dive in deeper, I recommend checking out [Further Reading](#further-reading) below.
 
@@ -29,14 +30,15 @@ hledger-build init    # scaffold a new project
 hledger-build         # run the full pipeline
 ```
 
+After updating `hledger-build`, run `hledger-build --force` to regenerate all files.
+
 ## Dev Setup
 
 Please install
 
-- [golangci-lint](https://golangci-lint.run/docs/welcome/install/local/)
-- [goreleaser](https://goreleaser.com/install/)
 - hledger
 - just
+- [golangci-lint](https://golangci-lint.run/docs/welcome/install/local/)
 - [pricehist](https://pypi.org/project/pricehist/)
 
 ## Further Reading

@@ -46,8 +46,15 @@
 # cash_assets      = "assets:cash"        # liquid account for short runway
 
 # --- Custom Reports ---
-# [[custom_reports]]
-# name = "investments"
-# output = "investments.txt"
-# script = "./investments.sh"
-# years = "all"
+[[custom_reports]]
+name   = "investments"
+output = "investments.txt"
+script = "hledger"
+years  = "all"
+args   = [
+  "roi",
+  "-f", "all.journal",
+  "--investment", "acct:assets:pension",
+  "--pnl", "acct:equity:unrealized_pnl",
+  "-Y",
+]

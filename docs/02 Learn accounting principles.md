@@ -1,4 +1,4 @@
-# Understand Double-Entry Accounting Principles
+# Learn Double-Entry Accounting Principles
 
 This is a concise introduction to double-entry accounting - just enough to get
 you productive with `hledger-build`. If you're already familiar with these
@@ -60,6 +60,21 @@ point in time_ — "how much do I have right now?" The next two (Income and
 Expenses) describe what _changed over a period_ — "where did my money go this
 quarter?"
 
+Here's a quick reference for the normal sign and purpose of each type:
+
+| Type        | Normal sign | Measures                    |
+| ----------- | ----------- | --------------------------- |
+| Assets      | positive    | Position at a point in time |
+| Liabilities | negative    | Position at a point in time |
+| Expenses    | positive    | Change over a period        |
+| Income      | negative    | Change over a period        |
+| Equity      | negative    | Summary / net worth         |
+
+The sign convention follows a single principle: all accounts are kept from
+**your** perspective. Liabilities are negative because you owe that money to
+someone else. Income is negative because it represents value you gave away
+(your time, your capital) in exchange for money flowing in.
+
 ## A Transaction in Practice
 
 Here's what a typical transaction looks like conceptually. You buy lunch for
@@ -67,12 +82,34 @@ $35 on your credit card:
 
 ```ledger
 2024-03-15 "Eataly" "Lunch with Maria"
-    Expenses:Food:Restaurants     35.00
-    USD Liabilities:CreditCard:Visa  -35.00 USD
+    expenses:food:restaurants     35.00 USD
+    liabilities:credit card:visa  -35.00 USD
 ```
 
 The expense account goes up by $35 (you consumed something), and your credit
-card balance goes down by $35 (you owe more). The sum is zero.
+card balance goes down by $35 (you owe more). The sum is zero:
+
+```mermaid
+flowchart LR
+    %% Starting Points and Timelines
+    R[expenses:restaurant] -- "10" --> R_tx(("+35"))
+    R_tx -- "45" --> R_end[ ]
+
+    C[liabilities:credit card] -- "-100" --> C_tx(("-35"))
+    C_tx -- "-135" --> C_end[ ]
+
+    %% Central Transaction Link
+    R_tx --- T[T: +35-35=0]
+    C_tx --- T
+
+    style R fill:none,stroke:none,font-weight:bold
+    style C fill:none,stroke:none,font-weight:bold
+    style R_end fill:none,stroke:none
+    style C_end fill:none,stroke:none
+    style R_tx fill:#fff,stroke:#000,stroke-width:1.5px
+    style C_tx fill:#fff,stroke:#000,stroke-width:1.5px
+    style T fill:#e0e0e0,stroke:#000,stroke-width:2px,font-weight:bold
+```
 
 A paycheck is more involved but follows the same principle:
 
@@ -100,16 +137,53 @@ time (a month, quarter, or year). This answers: "Where did my money come from
 and where did it go?" The difference between income and expenses is your **net
 income** — whether you saved money or spent more than you earned.
 
+## The Accounting Equation
+
+The zero-sum rule for individual transactions has a powerful global
+consequence. Because every posting belongs to a transaction that sums to zero,
+the sum of _all_ postings across your entire ledger must also equal zero. If we
+let each letter represent the total balance of that account type:
+
+> `A + L + X + I + E = 0`
+
+where **A** = Assets, **L** = Liabilities, **X** = Expenses, **I** = Income,
+**E** = Equity.
+
+**Net income** is the combined balance of your income and expense accounts over
+a period:
+
+> `NI = X + I`
+
+Because Income is normally negative and Expenses positive, a positive NI means
+you spent more than you earned, and a negative NI means you came out ahead
+(saved money).
+
+When you generate a Balance Sheet, the software "clears" the income statement
+accounts — it moves the accumulated NI into Equity, giving an updated equity
+value `E' = E + NI`. Substituting back:
+
+> `A + L + E' = 0`
+
+Rearranged (and flipping signs to match the traditional textbook form):
+
+> `Assets = Liabilities + Equity`
+
+This is the **fundamental accounting equation**. It states that everything you
+own (Assets) is financed either by debt (Liabilities) or by your own net worth
+(Equity). A Balance Sheet is simply a snapshot that verifies this equation
+holds at a particular date.
+
 ## The Chart of Accounts
 
 The full list of accounts you use is called your **chart of accounts**. There's
-no single correct way to organize it — you tailor it to your own life. A common
-convention is to include the country and institution in the account name:
+no single correct way to organize it — you tailor it to your own life.
+[Account Names](https://hledger.org/account-names.html) can be capitalized
+and include spaces. Do whatever you like!
 
 ```
-Assets:US:BankOfAmerica:Checking
 Assets:US:Vanguard:401k
-Liabilities:US:Chase:CreditCard
+assets:us:bank of america:checking
+liabilities:us:chase:credit_card
 Expenses:Housing:Rent
 Income:US:Employer:Salary
 ```

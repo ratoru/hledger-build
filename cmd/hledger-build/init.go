@@ -13,7 +13,7 @@ import (
 )
 
 const defaultToml = `# hledger-build.toml
-# Everything below is optional. An empty file (or no file at all) works
+# Everything below is optional. An empty file works
 # if your directory layout follows conventions.
 
 # --- Override discovered year range ---
@@ -60,11 +60,23 @@ const defaultToml = `# hledger-build.toml
 # cash_assets      = "assets:cash"        # liquid account for short runway
 
 # --- Custom Reports ---
+# Investment ROI: uncomment and adjust the account queries to match your setup.
+# Record contributions to assets:pension:* (or similar) and periodic valuations
+# against equity:unrealized_pnl, then rebuild to get IRR and TWR.
+# See the docs for a full walkthrough.
+#
 # [[custom_reports]]
-# name = "investments"
+# name   = "investments"
 # output = "investments.txt"
-# script = "./investments.sh"
-# years = "all"
+# script = "hledger"
+# years  = "all"
+# args   = [
+#   "roi",
+#   "-f", "all.journal",
+#   "--investment", "acct:assets:pension",
+#   "--pnl", "acct:equity:unrealized_pnl",
+#   "-Y",
+# ]
 `
 
 // commoditiesJournal is the content of commodities.journal written at the project root.
@@ -80,7 +92,7 @@ const commoditiesJournal = `; commodities.journal – commodity format declarati
 commodity $1,000.00
 
 ; Uncomment and adjust for other currencies or assets you track:
-; commodity £1,000.00
+; commodity £1_000.00
 ; commodity €1.000,00
 ; commodity AAPL 1.0000
 `

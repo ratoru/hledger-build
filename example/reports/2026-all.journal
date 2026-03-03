@@ -11,7 +11,27 @@
     assets:mybank:checking         $-20.01
     expenses:unknown                 20.01
 
+2026-01-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
 2026-02-03 CORNER GROCERY STORE
     assets:mybank:checking          $-52.40
     expenses:food:groceries           52.40
+
+2026-04-30 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2026-07-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2026-10-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2026-12-31 pension valuation
+    assets:pension:vanguard                 = $2,087.50
+    equity:unrealized_pnl
 
