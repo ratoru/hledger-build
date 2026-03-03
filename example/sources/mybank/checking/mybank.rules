@@ -1,0 +1,45 @@
+# mybank.rules – hledger CSV import rules for MyBank checking account.
+# Documentation: https://hledger.org/hledger.html#csv-format
+
+# ── CSV format ────────────────────────────────────────────────────────────────
+
+# Skip the header row (the first line of the CSV export).
+skip 1
+
+# Map the three CSV columns to hledger field names by position (1-based).
+# Adjust these to match your bank's actual column order and headers.
+fields date, description, amount
+
+# Date format used by this bank's CSV export.
+date-format %Y-%m-%d
+
+# ── Accounts ──────────────────────────────────────────────────────────────────
+
+# account1 is the hledger account that holds these funds (the imported account).
+account1 assets:mybank:checking
+
+# Default counterpart account for transactions that don't match any rule below.
+# These land in expenses:unknown for manual review.
+account2 expenses:unknown
+
+# Base Currency
+currency1 $
+
+# ── Classification rules ──────────────────────────────────────────────────────
+# Rules are applied top-to-bottom; later matches override earlier ones.
+# Each pattern is a case-insensitive regex matched against the whole CSV record
+# (all columns joined). Use %FIELDNAME to restrict to a specific column, e.g.
+#   if %description ^PAYROLL
+#     account2 income:salary
+
+if PAYROLL
+  account2 income:salary
+
+if GROCERY
+  account2 expenses:food:groceries
+
+# Add more rules as you encounter new payees, for example:
+# if NETFLIX|SPOTIFY
+#   account2 expenses:subscriptions
+# if ATM|CASH WITHDRAWAL
+#   account2 expenses:cash

@@ -1,0 +1,13 @@
+; 2026.journal – hledger entry point for 2026.
+;
+; hledger-build auto-generates sources/2026-imports.journal with include
+; directives for every source journal produced by the ingest pipeline.
+; You only need to maintain manual entries (opening balances, adjustments)
+; in this file.
+;
+; For years after the first, also include the generated opening balances:
+;   include reports/2026-opening.journal
+
+include commodities.journal
+include sources/_manual_/2026/opening.journal
+include sources/2026-imports.journal

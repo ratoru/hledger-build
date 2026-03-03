@@ -1,0 +1,7 @@
+; all.journal – top-level journal spanning all years.
+;
+; Use this for ad-hoc queries across multiple years, e.g.:
+;   hledger -f all.journal balance
+;
+; Add one include per year as your data grows:
+include 2026.journal

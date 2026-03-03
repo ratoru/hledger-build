@@ -1,0 +1,27 @@
+Financial Metrics: 2026
+Generated: 2026-03-02
+
+Month         Daily Exp    Daily Inc    Net Worth   Savings%  Short Run   Long Run        FIRE#
+---------- ------------ ------------ ------------ ---------- ---------- ---------- ------------
+2026-01            0.65       103.23      1200.00      99.4%       310d      1859d      5890.04
+2026-02            1.87        -0.00      1200.00          —       107d       641d     17076.79
+2026-03            0.00        -0.00      1200.00          —          —          —            —
+2026-04            0.00        -0.00      1200.00          —          —          —            —
+2026-05            0.00        -0.00      1200.00          —          —          —            —
+2026-06            0.00        -0.00      1200.00          —          —          —            —
+2026-07            0.00        -0.00      1200.00          —          —          —            —
+2026-08            0.00        -0.00      1200.00          —          —          —            —
+2026-09            0.00        -0.00      1200.00          —          —          —            —
+2026-10            0.00        -0.00      1200.00          —          —          —            —
+2026-11            0.00        -0.00      1200.00          —          —          —            —
+2026-12            0.00        -0.00      1200.00          —          —          —            —
+---------- ------------ ------------ ------------ ---------- ---------- ---------- ------------
+Year Avg           0.20         8.77      1200.00      97.7%      1008d      6049d      1810.25
+
+Notes:
+  Daily Exp/Inc: average for the month/year, excl. pay deductions/gifts
+  Net Worth:     assets minus liabilities at end of period
+  Savings%:      (take-home income - expenses) / take-home income
+  Short Runway:  liquid cash / daily expense
+  Long Runway:   total assets / daily expense
+  FIRE#:         25x annual expenses (Financial Independence, Retire Early)
