@@ -228,7 +228,7 @@ func customReportToSteps(
 			yearStr := strconv.Itoa(year)
 			vars := map[string]string{"year": yearStr}
 
-			output := reportsDir + "/" + template.Apply(cr.Output, vars)
+			output := resolveCustomOutput(reportsDir, template.Apply(cr.Output, vars))
 			args := applyTemplateSlice(cr.Args, vars)
 
 			deps, err := getYearDeps(year)
@@ -261,7 +261,7 @@ func customReportToSteps(
 		if err != nil {
 			return nil, err
 		}
-		output := reportsDir + "/" + cr.Output
+		output := resolveCustomOutput(reportsDir, cr.Output)
 		return []runner.Step{{
 			ID:            output,
 			Output:        output,
@@ -283,7 +283,7 @@ func customReportToSteps(
 		toStr := strconv.Itoa(toYear)
 		vars := map[string]string{"from_year": fromStr, "to_year": toStr}
 
-		output := reportsDir + "/" + template.Apply(cr.Output, vars)
+		output := resolveCustomOutput(reportsDir, template.Apply(cr.Output, vars))
 		args := applyTemplateSlice(cr.Args, vars)
 
 		// Deps: union of all year includes in [fromYear, toYear].
@@ -323,7 +323,7 @@ func customReportToSteps(
 
 	// ── Mode 4: single step with depends_on only ─────────────────────────
 	default:
-		output := reportsDir + "/" + cr.Output
+		output := resolveCustomOutput(reportsDir, cr.Output)
 
 		seen := make(map[string]bool)
 		var deps []string
@@ -400,12 +400,23 @@ func resolveYearRange(yr map[string]string, currentYear int) (from, to int, err 
 }
 
 // resolveReportDep normalises a depends_on entry to a project-root-relative path.
-// Entries with no "/" are assumed to live in the reports directory.
+// A "./" prefix means project-root-relative (the "./" is stripped).
+// Everything else (bare name or subpath) is placed under the reports directory.
 func resolveReportDep(reportsDir, dep string) string {
-	if strings.ContainsRune(dep, '/') {
-		return dep
+	if strings.HasPrefix(dep, "./") {
+		return dep[2:]
 	}
 	return reportsDir + "/" + dep
+}
+
+// resolveCustomOutput normalises a custom report output to a project-root-relative path.
+// A "./" prefix means project-root-relative (e.g. "./sources/prices/2026/USD.prices").
+// Everything else (bare name or subpath) is placed under the reports directory.
+func resolveCustomOutput(reportsDir, output string) string {
+	if strings.HasPrefix(output, "./") {
+		return output[2:]
+	}
+	return reportsDir + "/" + output
 }
 
 // applyTemplateSlice applies template.Apply to each element of slice.

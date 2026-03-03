@@ -36,28 +36,28 @@ you need.
 Every account belongs to one of five types. Understanding these is the key to
 reading any financial report.
 
-**Assets** — Things you _have_. Bank accounts, cash, investments, property.
+**Assets** — Things you **have**. Bank accounts, cash, investments, property.
 Balances are normally positive.
 
-**Liabilities** — Things you _owe_. Credit cards, loans, mortgages. Balances
+**Liabilities** — Things you **owe**. Credit cards, loans, mortgages. Balances
 are normally negative (from your perspective, these represent money owed to
 someone else).
 
-**Income** — Value you _receive_ in exchange for something (usually your time
+**Income**[^1] — Value you **receive** in exchange for something (usually your time
 or investments). Salary, dividends, interest. Balances are normally negative —
 this may feel counterintuitive, but it reflects that income "flows toward you"
 from somewhere.
 
-**Expenses** — Value you _consume_ or spend. Food, rent, taxes, entertainment.
+**Expenses** — Value you **consume** or spend. Food, rent, taxes, entertainment.
 Balances are normally positive.
 
 **Equity** — A special type used to summarize the net effect of all past income
 and expenses. You rarely interact with equity accounts directly; they exist to
 make the books balance across time periods.
 
-The first two (Assets and Liabilities) describe your financial position _at a
-point in time_ — "how much do I have right now?" The next two (Income and
-Expenses) describe what _changed over a period_ — "where did my money go this
+The first two (Assets and Liabilities) describe your financial position **at a
+point in time** — "how much do I have right now?" The next two (Income and
+Expenses) describe what **changed over a period** — "where did my money go this
 quarter?"
 
 Here's a quick reference for the normal sign and purpose of each type:
@@ -82,7 +82,7 @@ $35 on your credit card:
 
 ```ledger
 2024-03-15 "Eataly" "Lunch with Maria"
-    expenses:food:restaurants     35.00 USD
+    expenses:food:restaurants      35.00 USD
     liabilities:credit card:visa  -35.00 USD
 ```
 
@@ -141,7 +141,7 @@ income** — whether you saved money or spent more than you earned.
 
 The zero-sum rule for individual transactions has a powerful global
 consequence. Because every posting belongs to a transaction that sums to zero,
-the sum of _all_ postings across your entire ledger must also equal zero. If we
+the sum of **all** postings across your entire ledger must also equal zero. If we
 let each letter represent the total balance of that account type:
 
 > `A + L + X + I + E = 0`
@@ -209,3 +209,10 @@ treatment, the Beancount documentation is excellent:
   A comprehensive walkthrough of double-entry bookkeeping from first principles, including trial balances, equity, and the accounting equation.
 - [Command-Line Accounting in Context](https://beancount.github.io/docs/command_line_accounting_in_context.html).
   Motivation and context for why plain-text accounting is worth doing, and how the pieces fit together.
+
+[^1]:
+    In traditional double-entry accounting, this account type is usually
+    called **Revenue**. The word "income" there refers to **net income** — the
+    difference between revenue and expenses (i.e., profit). Plain-text accounting
+    tools (hledger, Beancount, Ledger) use **Income** as the account type name
+    instead.

@@ -139,7 +139,7 @@ func TestGoldenPass2Steps(t *testing.T) {
 			Cleaned: "cleaned",
 			Journal: "journal",
 			Build:   ".build",
-			Prices:  "prices",
+			Prices:  "sources/prices",
 			Manual:  "_manual_",
 		},
 		Reports: config.Reports{

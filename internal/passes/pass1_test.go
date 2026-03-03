@@ -44,7 +44,7 @@ func makeConfig(dir string) *config.Config {
 			Cleaned: "cleaned",
 			Journal: "journal",
 			Build:   ".build",
-			Prices:  "prices",
+			Prices:  "sources/prices",
 			Manual:  "_manual_",
 			Reports: "reports",
 		},

@@ -2,32 +2,29 @@
 
 ## Personal Finance Tracking Is Empowering
 
-Most people have a rough sense of where their money goes, and that's
-fine most of the time. You don't need a spreadsheet to know that rent is
-expensive or that you eat out too much.
+I used to rely on mental math to manage my money. I knew exactly what my rent
+cost, and I always suspected I spent too much on Ubers. I never needed a
+spreadsheet to tell me that.
 
-But every now and then, life throws something at you - a job change, a move, an
-unexpected expense - and suddenly you wish you had a clearer picture. Tracking
-your finances gives you that. Not because you need to monitor every coffee, but
-because having real numbers to look at makes it easier to figure things out
-when you actually need to.
+Mental math works fine until life happens. A sudden move or career change can
+scramble your internal calculator. That is when tracking your finances can
+be of real value.
 
-Accurate financial records are crucial during times of hardship. They
-enable you to create a realistic budget and avoid overspending. At the
-same time, when your income is growing, detailed records allow you to
-invest wisely and strategically plan for your future. No matter your
-current financial situation, change is inevitable. With a solid record
-of your finances, you'll be well-prepared for those moments of
-transition, enabling deeper introspection and more effective planning.
+You don't have to log every single coffee to get value out of tracking. The
+goal isn't to create a meticulous, guilt-inducing ledger. It’s simply about
+having a baseline. When your income grows, that baseline helps you figure out
+how to spend the extra cash. When money gets tight, it shows you exactly
+which levers you can pull to get by.
 
-There's a nice side effect too: the longer you keep records, the more
-interesting they get. You start noticing patterns — seasonal spending habits,
-how your costs shifted after a move, whether you're actually saving more than
-last year.
+The longer you keep track, the more interesting your data gets.
+You start noticing seasonal spending habits, exactly how much a life change
+actually cost you, or whether you're genuinely saving more than you did last
+year.
 
-It doesn't have to be a big commitment. Track what feels relevant, ignore the
-rest. The point isn't to be meticulous, but about securing a more
-predictable and controlled financial future.
+Track what feels relevant, ignore the rest. Nobody is keeping score.
+
+If you've decided to start, the next question is how. I recommend
+plain-text accoutning.
 
 ## Plain-Text Accounting Is Secure, Stable, and Flexible
 

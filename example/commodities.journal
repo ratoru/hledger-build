@@ -10,6 +10,6 @@
 commodity $1,000.00
 
 ; Uncomment and adjust for other currencies or assets you track:
-; commodity £1,000.00
+; commodity £1_000.00
 ; commodity €1.000,00
 ; commodity AAPL 1.0000

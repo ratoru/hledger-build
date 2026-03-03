@@ -5,8 +5,6 @@ generates standard financial reports — automatically, incrementally, and
 reproducibly. Every output is cached by a content hash; re-running only rebuilds
 what actually changed.
 
----
-
 ## Quick start
 
 ```bash
@@ -18,8 +16,6 @@ hledger-build         # run the full pipeline
 `init` creates a working example with sample data so you can see the pipeline in
 action immediately. Replace the sample files with your own statements and rules
 when you're ready.
-
----
 
 ## Directory layout
 
@@ -37,6 +33,10 @@ my-ledger/
 │   ├── _manual_/               # hand-written journal entries (not imported)
 │   │   └── 2026/
 │   │       └── opening.journal
+│   │
+│   ├── prices/                 # commodity price directives (fetched or hand-written)
+│   │   └── 2026/
+│   │       └── USD.prices
 │   │
 │   └── mybank/                 # one directory per data source
 │       └── checking/           # optional subdir
@@ -72,9 +72,8 @@ Key conventions:
 - **Years are auto-discovered**: 4-digit subdirectory names under any source's
   `raw/` directory, under `sources/_manual_/`, or under `prices/`.
 - **Rules files are discovered breadth-first**: `*.rules` files are searched
-  from `sources/` down to the source directory, broadest first.
-
----
+  from `sources/` down to the data source directory. Later rules override earlier
+  ones.
 
 ## The ingest pipeline
 
@@ -158,8 +157,6 @@ if GROCERY|SUPERMARKET
 See the [hledger CSV docs](https://hledger.org/hledger.html#csv-format) for the
 full rules reference.
 
----
-
 ## Year journals
 
 hledger-build needs a `{year}.journal` file at the project root for each year.
@@ -233,8 +230,6 @@ For years after the first year, hledger-build automatically generates
 previous year's equity. Replace the hand-written `opening.journal` include with
 `include reports/{year}-opening.journal` to carry forward balances automatically.
 
----
-
 ## Generated reports
 
 hledger-build generates these reports for every year in your configured range:
@@ -278,8 +273,6 @@ Month         Daily Exp    Daily Inc    Net Worth   Savings%  Short Run   Long R
 | FIRE#     | Annual expenses × FIRE multiplier (default 25 = 4% rule)          |
 | AAW / PAW | Average/Prodigious Accumulator of Wealth targets (requires `age`) |
 
----
-
 ## `hledger-build.toml` reference
 
 Everything is optional.
@@ -302,7 +295,7 @@ Everything is optional.
 # cleaned  = "cleaned"
 # journal  = "journal"
 # build    = ".build"
-# prices   = "prices"
+# prices   = "sources/prices"
 # manual   = "_manual_"
 
 # ── Built-in reports ──────────────────────────────────────────────────────────
@@ -453,8 +446,6 @@ price files used by a custom convert script):
 extra_deps = ["prices/2026/prices.csv"]
 ```
 
----
-
 ## Typical workflow
 
 1. **Export** your bank statement as CSV and drop it into
@@ -467,8 +458,6 @@ extra_deps = ["prices/2026/prices.csv"]
 5. **Run again** to apply the new rules.
 6. **Commit** everything — raw exports, rules, journals, reports — to version
    control.
-
----
 
 ## FAQ and Tips
 
@@ -493,6 +482,33 @@ adjustment in `_manual_`:
 
 The metrics report excludes `expenses:gross` by default when computing daily
 spending, so payroll deductions don't inflate your expense averages.
+
+### How do you handle foreign currency transactions? {#foreign-currency}
+
+Record the native-currency cost on the expense posting using `@@` (total cost):
+
+```ledger
+2026-03-09 Foreign currency expense
+    assets:bank                    $-10.00
+    expenses:whatever          €11.65 @@ $10.00
+```
+
+hledger shows `€11.65` by default and `$10.00` when `--cost` is passed. The
+built-in income/expenses report already uses `--cost`, so foreign-currency
+expenses appear in your native currency automatically.
+
+When your bank statement embeds the foreign-currency amount in a description
+field, use a `preprocess` script to extract it into a dedicated column, then
+reference that column in your `.rules` file:
+
+```
+if
+FOREIGN CCY
+  amount2  %fxamount @@ $%amount
+```
+
+See the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
+for a worked example with a real bank CSV.
 
 ### How do you balance transfers between 2 accounts when you have statements for both accounts? {#transfer-2-accounts}
 

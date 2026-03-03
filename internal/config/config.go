@@ -179,7 +179,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("directories.cleaned", "cleaned")
 	v.SetDefault("directories.journal", "journal")
 	v.SetDefault("directories.build", ".build")
-	v.SetDefault("directories.prices", "prices")
+	v.SetDefault("directories.prices", "sources/prices")
 	v.SetDefault("directories.manual", "_manual_")
 	// Reports are enabled by default; users must explicitly set enabled=false to disable.
 	v.SetDefault("reports.transactions.enabled", true)

@@ -1,5 +1,5 @@
 # hledger-build.toml
-# Everything below is optional. An empty file (or no file at all) works
+# Everything below is optional. An empty file works
 # if your directory layout follows conventions.
 
 # --- Override discovered year range ---
@@ -19,7 +19,7 @@
 # cleaned = "cleaned"
 # journal = "journal"
 # build = ".build"
-# prices = "prices"
+# prices = "sources/prices"
 # manual = "_manual_"
 
 # --- Built-in Reports ---
@@ -35,10 +35,10 @@
 #
 # Monthly financial metrics (daily spending, savings rate, net worth, FIRE#).
 # Enabled by default. Set your age to unlock AAW/PAW wealth benchmarks.
-# [reports.metrics]
+[reports.metrics]
 # enabled     = true
 # fire_factor = 25          # FIRE multiplier (default 25 = 4% rule)
-# age         = 0           # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
+age = 25 # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
 # currency    = ""          # e.g. "USD" to convert all values via --value=end
 # [reports.metrics.accounts]
 # exclude_expenses = ["expenses:gross"]   # payroll deductions excluded from daily avg
@@ -46,15 +46,22 @@
 # cash_assets      = "assets:cash"        # liquid account for short runway
 
 # --- Custom Reports ---
+# Investment ROI: uncomment and adjust the account queries to match your setup.
+# Record contributions to assets:pension:* (or similar) and periodic valuations
+# against equity:unrealized_pnl, then rebuild to get IRR and TWR.
+# See the docs for a full walkthrough.
 [[custom_reports]]
-name   = "investments"
+name = "investments"
 output = "investments.txt"
 script = "hledger"
-years  = "all"
-args   = [
-  "roi",
-  "-f", "all.journal",
-  "--investment", "acct:assets:pension",
-  "--pnl", "acct:equity:unrealized_pnl",
-  "-Y",
+years = "all"
+args = [
+    "roi",
+    "-f",
+    "all.journal",
+    "--investment",
+    "acct:assets:pension",
+    "--pnl",
+    "acct:equity:unrealized_pnl",
+    "-Y",
 ]

@@ -11,22 +11,18 @@ converts raw bank statements into journals and reports, so you can focus on the
 parts that actually matter: reviewing your finances and making decisions.
 
 If you're new to double-entry accounting, read the
-[Understand accounting principles](<./Understand\ accounting\ principles.md>) first.
+[Learn accounting principles](<./02 Learn accounting principles.md>) first.
 
 ## Core Principles
 
 ### Version Control Everything
 
-Your entire financial history — source files, conversion scripts, journals, and
-reports — lives in version control. This gives you a verifiable chain from raw
-bank exports to final reports: every transformation is reproducible and
-auditable.
+Your entire financial history (source files, conversion scripts, journals, and
+reports) lives in version control. This gives you a verifiable chain of custody
+from raw bank exports to final reports: every transformation is reproducible
+and auditable.
 
-More practically, it means you can experiment freely. Rename accounts,
-restructure files, or rewrite conversion rules knowing you can always review or
-revert changes.
-
-### Refactor Fearlessly
+### Refactor Aggressively
 
 Because the pipeline is automated and version-controlled, you can change any
 part of the system without risk:
@@ -38,20 +34,23 @@ part of the system without risk:
 - **Reorganizing your account hierarchy?** Make the change, rebuild, and verify
   the reports still add up.
 
+You should do this constantly and without hesitation.
+
 ### Automate Report Generation
 
-Every time you rebuild, reports are regenerated automatically. This keeps the
-feedback loop tight: make a change, see the effect immediately.
+Every time you rebuild, all financial reports are regenerated automatically.
+You can review the effect of your changes immediately, and iterate more quickly.
 
 ### Minimize Manual Entries
 
 Manual data entry is slow and error-prone — in my experience it takes more
 effort than managing the rest of the system combined. Automate everything you
 can from electronic statements and reserve manual entries for the exceptions.
+
 Not every transaction needs fine-grained tracking either. In my setup, all ATM
 withdrawals go under `expenses:misc:cash`. Unless the total becomes
-significant, I don't invest time detailing each one. I'd recommend a similar
-approach, especially if you don't handle large amounts of cash.
+significant, I don't invest time detailing each one. I recommend a similar
+mindset for other categories.
 
 ### Start Simple, Add Detail Over Time
 
@@ -117,4 +116,4 @@ At the same time, almost everything is configurable: conversion rules, account
 mappings, report formats, and the build pipeline itself can all be adapted to
 your needs. The conventions are sensible defaults, not constraints.
 
-For a detailed walkthrough of the directory structure and workflow, see [How to use hledger-build](./How%20to%20use%20hledger-build.md).
+For a detailed walkthrough of the directory structure and workflow, see [How to use hledger-build](<./04 How to use hledger-build.md>).

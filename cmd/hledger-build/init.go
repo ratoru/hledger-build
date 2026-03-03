@@ -33,7 +33,7 @@ const defaultToml = `# hledger-build.toml
 # cleaned = "cleaned"
 # journal = "journal"
 # build = ".build"
-# prices = "prices"
+# prices = "sources/prices"
 # manual = "_manual_"
 
 # --- Built-in Reports ---

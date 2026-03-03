@@ -431,7 +431,7 @@ func TestPass2CustomReportDefault(t *testing.T) {
 			Name:      "summary",
 			Output:    "summary.txt",
 			Script:    "./summary.sh",
-			DependsOn: []string{"reports/2024-balance-sheet.txt"},
+			DependsOn: []string{"./reports/2024-balance-sheet.txt"},
 		},
 	}
 

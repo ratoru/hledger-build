@@ -141,7 +141,7 @@ func TestYearDiscovery(t *testing.T) {
 	mkdirAll(t, filepath.Join(dir, "sources", "lloyds", "raw", "2021"))
 	mkdirAll(t, filepath.Join(dir, "sources", "lloyds", "raw", "2023"))
 	mkdirAll(t, filepath.Join(dir, "sources", "chase", "raw", "2022"))
-	mkdirAll(t, filepath.Join(dir, "prices", "2020"))
+	mkdirAll(t, filepath.Join(dir, "sources", "prices", "2020"))
 	mkdirAll(t, filepath.Join(dir, "sources", "_manual_", "2019"))
 
 	cfg, err := Load(filepath.Join(dir, "hledger-build.toml"))
@@ -188,7 +188,7 @@ func TestRulesDiscovery(t *testing.T) {
 		Cleaned: "cleaned",
 		Journal: "journal",
 		Build:   ".build",
-		Prices:  "prices",
+		Prices:  "sources/prices",
 		Manual:  "_manual_",
 	}
 
@@ -231,7 +231,7 @@ func TestRulesDiscoveryNested(t *testing.T) {
 		Cleaned: "cleaned",
 		Journal: "journal",
 		Build:   ".build",
-		Prices:  "prices",
+		Prices:  "sources/prices",
 		Manual:  "_manual_",
 	}
 
