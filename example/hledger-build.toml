@@ -1,0 +1,53 @@
+# hledger-build.toml
+# Everything below is optional. An empty file (or no file at all) works
+# if your directory layout follows conventions.
+
+# --- Override discovered year range ---
+# first_year = 2014           # Default: earliest year found in raw/{year}/ dirs
+# current_year = 2026         # Default: latest year found in raw/{year}/ dirs
+
+# --- Optional settings (showing defaults) ---
+# hledger_binary = "hledger"
+# equity_query = "assets|liabilities|debts"
+# jobs = 0                    # 0 = runtime.NumCPU()
+
+# --- Optional directory name overrides (showing defaults) ---
+# [directories]
+# sources = "sources"
+# reports = "reports"
+# raw = "raw"
+# cleaned = "cleaned"
+# journal = "journal"
+# build = ".build"
+# prices = "prices"
+# manual = "_manual_"
+
+# --- Built-in Reports ---
+# Standard hledger reports generated for each year. All enabled by default.
+# Only add this section to customise args or disable specific reports.
+# [reports]
+# transactions     = { args = ["print"] }
+# accounts         = { args = ["accounts"] }
+# income_expenses  = { args = ["is", "--flat", "--no-elide", "--cost"] }
+# balance_sheet    = { args = ["balancesheet", "--no-elide"] }
+# cashflow         = { args = ["cashflow", "not:desc:(opening balances)", "--no-elide"] }
+# unknown          = { args = ["print", "unknown"] }
+#
+# Monthly financial metrics (daily spending, savings rate, net worth, FIRE#).
+# Enabled by default. Set your age to unlock AAW/PAW wealth benchmarks.
+# [reports.metrics]
+# enabled     = true
+# fire_factor = 25          # FIRE multiplier (default 25 = 4% rule)
+# age         = 0           # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
+# currency    = ""          # e.g. "USD" to convert all values via --value=end
+# [reports.metrics.accounts]
+# exclude_expenses = ["expenses:gross"]   # payroll deductions excluded from daily avg
+# exclude_income   = ["income:gift"]      # windfalls excluded from daily avg
+# cash_assets      = "assets:cash"        # liquid account for short runway
+
+# --- Custom Reports ---
+# [[custom_reports]]
+# name = "investments"
+# output = "investments.txt"
+# script = "./investments.sh"
+# years = "all"

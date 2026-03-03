@@ -1,0 +1,3 @@
+# hledger-build dependencies
+.build/
+/hledger-build

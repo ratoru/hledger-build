@@ -1,0 +1,6 @@
+assets:cash
+assets:mybank:checking
+equity:opening balances
+expenses:food:groceries
+expenses:unknown
+income:salary

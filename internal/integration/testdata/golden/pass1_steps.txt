@@ -1,0 +1,30 @@
+output: sources/bank1/checking/cleaned/2023/jan.csv
+command: ./preprocess
+args: raw/2023/jan.csv
+deps: sources/bank1/checking/raw/2023/jan.csv
+
+output: sources/bank1/checking/cleaned/2024/jan.csv
+command: ./preprocess
+args: raw/2024/jan.csv
+deps: sources/bank1/checking/raw/2024/jan.csv
+
+output: sources/bank1/checking/journal/2023/jan.journal
+command: ./convert
+args: cleaned/2023/jan.csv
+deps: sources/bank1/checking/cleaned/2023/jan.csv
+
+output: sources/bank1/checking/journal/2024/jan.journal
+command: ./convert
+args: cleaned/2024/jan.csv
+deps: sources/bank1/checking/cleaned/2024/jan.csv
+
+output: sources/bank2/savings/journal/2023/jan.journal
+command: ./convert
+args: raw/2023/jan.csv
+deps: sources/bank2/savings/raw/2023/jan.csv
+
+output: sources/bank2/savings/journal/2024/jan.journal
+command: ./convert
+args: raw/2024/jan.csv
+deps: sources/bank2/savings/raw/2024/jan.csv
+

@@ -1,0 +1,17 @@
+2026-01-01 opening balances
+    assets:mybank:checking                  = 1000.00
+    assets:cash                             = 200.00
+    equity:opening balances
+
+2026-01-15 ACME CORP PAYROLL
+    assets:mybank:checking       $3,200.00
+    income:salary                 -3200.00
+
+2026-01-16 SUBWAY
+    assets:mybank:checking         $-20.01
+    expenses:unknown                 20.01
+
+2026-02-03 CORNER GROCERY STORE
+    assets:mybank:checking          $-52.40
+    expenses:food:groceries           52.40
+

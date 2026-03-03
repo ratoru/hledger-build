@@ -1,0 +1,15 @@
+; commodities.journal – commodity format declarations.
+;
+; These directives tell hledger the canonical display format for each commodity.
+; Include this file in every year journal to ensure consistent formatting
+; regardless of which transactions hledger encounters first.
+;
+; Adjust the format and add more commodities or assets as needed.
+
+; US Dollar — two decimal places, comma thousands separator
+commodity $1,000.00
+
+; Uncomment and adjust for other currencies or assets you track:
+; commodity £1,000.00
+; commodity €1.000,00
+; commodity AAPL 1.0000

@@ -1,0 +1,70 @@
+output: reports/2023-accounts.txt
+command: hledger
+args: -f 2023.journal accounts
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-all.journal
+command: hledger
+args: -f 2023.journal print
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-balance-sheet.txt
+command: hledger
+args: -f 2023.journal balancesheet --no-elide
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-cashflow.txt
+command: hledger
+args: -f 2023.journal cashflow not:desc:(opening balances) --no-elide
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-closing.journal
+command: hledger
+args: -f 2023.journal equity assets|liabilities|debts -e 2024 -I --closing
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-income-expenses.txt
+command: hledger
+args: -f 2023.journal is --flat --no-elide --cost
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2023-unknown.journal
+command: hledger
+args: -f 2023.journal print unknown
+deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2024-accounts.txt
+command: hledger
+args: -f 2024.journal accounts
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
+output: reports/2024-all.journal
+command: hledger
+args: -f 2024.journal print
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
+output: reports/2024-balance-sheet.txt
+command: hledger
+args: -f 2024.journal balancesheet --no-elide
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
+output: reports/2024-cashflow.txt
+command: hledger
+args: -f 2024.journal cashflow not:desc:(opening balances) --no-elide
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
+output: reports/2024-income-expenses.txt
+command: hledger
+args: -f 2024.journal is --flat --no-elide --cost
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
+output: reports/2024-opening.journal
+command: hledger
+args: -f 2023.journal equity assets|liabilities|debts -e 2024 --opening
+deps: 2023.journal reports/2023-closing.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
+
+output: reports/2024-unknown.journal
+command: hledger
+args: -f 2024.journal print unknown
+deps: 2024.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
+
