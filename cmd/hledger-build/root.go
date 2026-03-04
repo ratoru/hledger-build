@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
@@ -12,7 +13,12 @@ import (
 	"github.com/ratoru/hledger-build/internal/runner"
 )
 
-var version = "dev"
+var version = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		return info.Main.Version
+	}
+	return "dev"
+}()
 
 // ── Global flag variables (set by persistent flags on root command) ────────────
 
