@@ -43,9 +43,9 @@ Balances are normally positive.
 are normally negative (from your perspective, these represent money owed to
 someone else).
 
-**Income**[^1] — Value you **receive** in exchange for something (usually your time
+**Revenue**[^1] — Value you **receive** in exchange for something (usually your time
 or investments). Salary, dividends, interest. Balances are normally negative —
-this may feel counterintuitive, but it reflects that income "flows toward you"
+this may feel counterintuitive, but it reflects that revenue "flow toward you"
 from somewhere.
 
 **Expenses** — Value you **consume** or spend. Food, rent, taxes, entertainment.
@@ -56,7 +56,7 @@ and expenses. You rarely interact with equity accounts directly; they exist to
 make the books balance across time periods.
 
 The first two (Assets and Liabilities) describe your financial position **at a
-point in time** — "how much do I have right now?" The next two (Income and
+point in time** — "how much do I have right now?" The next two (Revenue and
 Expenses) describe what **changed over a period** — "where did my money go this
 quarter?"
 
@@ -67,12 +67,12 @@ Here's a quick reference for the normal sign and purpose of each type:
 | Assets      | positive    | Position at a point in time |
 | Liabilities | negative    | Position at a point in time |
 | Expenses    | positive    | Change over a period        |
-| Income      | negative    | Change over a period        |
+| Revenue     | negative    | Change over a period        |
 | Equity      | negative    | Summary / net worth         |
 
 The sign convention follows a single principle: all accounts are kept from
 **your** perspective. Liabilities are negative because you owe that money to
-someone else. Income is negative because it represents value you gave away
+someone else. Revenue is negative because it represents value you gave away
 (your time, your capital) in exchange for money flowing in.
 
 ## A Transaction in Practice
@@ -118,7 +118,7 @@ A paycheck is more involved but follows the same principle:
     Assets:Bank:Checking         4000.00 USD
     Expenses:Taxes:Federal        800.00 USD
     Expenses:Taxes:State          200.00 USD
-    Income:Salary               -5000.00 USD
+    Revenue:Salary             -5000.00 USD
 ```
 
 Your gross salary of $5,000 (negative, because it's income) gets split into
@@ -132,9 +132,9 @@ From this data, two essential reports can be generated:
 It lists all your Assets, Liabilities, and Equity accounts with their current
 balances. This answers: "What is my net worth right now?"
 
-**Income Statement** — A summary of all Income and Expenses over a period of
+**Income Statement** — A summary of all Revenue and Expenses over a period of
 time (a month, quarter, or year). This answers: "Where did my money come from
-and where did it go?" The difference between income and expenses is your **net
+and where did it go?" The difference between revenue and expenses is your **net
 income** — whether you saved money or spent more than you earned.
 
 ## The Accounting Equation
@@ -144,21 +144,21 @@ consequence. Because every posting belongs to a transaction that sums to zero,
 the sum of **all** postings across your entire ledger must also equal zero. If we
 let each letter represent the total balance of that account type:
 
-> `A + L + X + I + E = 0`
+> `A + L + X + R + E = 0`
 
-where **A** = Assets, **L** = Liabilities, **X** = Expenses, **I** = Income,
+where **A** = Assets, **L** = Liabilities, **X** = Expenses, **R** = Revenue,
 **E** = Equity.
 
-**Net income** is the combined balance of your income and expense accounts over
+**Net income** is the combined balance of your revenue and expense accounts over
 a period:
 
-> `NI = X + I`
+> `NI = X + R`
 
-Because Income is normally negative and Expenses positive, a positive NI means
+Because Revenue is normally negative and Expenses positive, a positive NI means
 you spent more than you earned, and a negative NI means you came out ahead
 (saved money).
 
-When you generate a Balance Sheet, the software "clears" the income statement
+When you generate a Balance Sheet, the software "clears" the revenue and expense
 accounts — it moves the accumulated NI into Equity, giving an updated equity
 value `E' = E + NI`. Substituting back:
 
@@ -185,7 +185,7 @@ Assets:US:Vanguard:401k
 assets:us:bank of america:checking
 liabilities:us:chase:credit_card
 Expenses:Housing:Rent
-Income:US:Employer:Salary
+Revenue:US:Employer:Salary
 ```
 
 Start simple. You can always add more accounts later as you want finer-grained

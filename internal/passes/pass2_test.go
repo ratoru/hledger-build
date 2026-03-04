@@ -573,7 +573,7 @@ func TestPass2MetricsStep(t *testing.T) {
 		}
 	}
 	// Verify config-derived flags are present so hash covers them.
-	for _, want := range []string{"--fire-factor", "25", "--exclude-expenses", "--exclude-income", "--cash-assets", "--age", "--currency"} {
+	for _, want := range []string{"--fire-factor", "25", "--exclude-expenses", "--exclude-revenue", "--cash-assets", "--age", "--currency"} {
 		if !containsStr(s.Args, want) {
 			t.Errorf("Args %v missing %q", s.Args, want)
 		}

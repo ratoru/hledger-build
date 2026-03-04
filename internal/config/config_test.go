@@ -62,9 +62,9 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("Reports.Metrics.Accounts.ExcludeExpenses = %v, want [expenses:gross]",
 			cfg.Reports.Metrics.Accounts.ExcludeExpenses)
 	}
-	if len(cfg.Reports.Metrics.Accounts.ExcludeIncome) != 1 || cfg.Reports.Metrics.Accounts.ExcludeIncome[0] != "income:gift" {
-		t.Errorf("Reports.Metrics.Accounts.ExcludeIncome = %v, want [income:gift]",
-			cfg.Reports.Metrics.Accounts.ExcludeIncome)
+	if len(cfg.Reports.Metrics.Accounts.ExcludeRevenue) != 1 || cfg.Reports.Metrics.Accounts.ExcludeRevenue[0] != "revenue:gift" {
+		t.Errorf("Reports.Metrics.Accounts.ExcludeRevenue = %v, want [revenue:gift]",
+			cfg.Reports.Metrics.Accounts.ExcludeRevenue)
 	}
 	if cfg.Reports.Metrics.Accounts.CashAssets != "assets:cash" {
 		t.Errorf("Reports.Metrics.Accounts.CashAssets = %q, want %q",

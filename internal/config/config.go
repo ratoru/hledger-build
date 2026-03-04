@@ -64,7 +64,7 @@ type BuiltinReport struct {
 // MetricsAccounts holds account query strings used by the metrics report.
 type MetricsAccounts struct {
 	ExcludeExpenses []string `mapstructure:"exclude_expenses"`
-	ExcludeIncome   []string `mapstructure:"exclude_income"`
+	ExcludeRevenue  []string `mapstructure:"exclude_revenue"`
 	CashAssets      string   `mapstructure:"cash_assets"`
 }
 
@@ -191,7 +191,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("reports.metrics.enabled", true)
 	v.SetDefault("reports.metrics.fire_factor", 25)
 	v.SetDefault("reports.metrics.accounts.exclude_expenses", []string{"expenses:gross"})
-	v.SetDefault("reports.metrics.accounts.exclude_income", []string{"income:gift"})
+	v.SetDefault("reports.metrics.accounts.exclude_revenue", []string{"revenue:gift"})
 	v.SetDefault("reports.metrics.accounts.cash_assets", "assets:cash")
 
 	var projectRoot string

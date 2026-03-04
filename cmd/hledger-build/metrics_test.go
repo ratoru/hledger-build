@@ -75,7 +75,7 @@ func TestParseMultiperiodCSV(t *testing.T) {
 
 	t.Run("single account row", func(t *testing.T) {
 		csv := `"account","2024-01-01..2024-02-01"
-"income:salary","-3000.00"
+"revenue:salary","-3000.00"
 `
 		result, err := parseMultiperiodCSV(csv)
 		if err != nil {

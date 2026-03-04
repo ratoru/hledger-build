@@ -128,7 +128,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 					"--year", yearStr,
 					"--fire-factor", strconv.Itoa(mc.FireFactor),
 					"--exclude-expenses", strings.Join(mc.Accounts.ExcludeExpenses, ","),
-					"--exclude-income", strings.Join(mc.Accounts.ExcludeIncome, ","),
+					"--exclude-revenue", strings.Join(mc.Accounts.ExcludeRevenue, ","),
 					"--cash-assets", mc.Accounts.CashAssets,
 					"--currency", mc.Currency,
 					"--age", strconv.Itoa(mc.Age),

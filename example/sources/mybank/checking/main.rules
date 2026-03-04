@@ -12,6 +12,7 @@ fields date, description, amount
 
 # Date format used by this bank's CSV export.
 date-format %Y-%m-%d
+decimal-mark .
 
 # ── Accounts ──────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,7 @@ currency1 $
 # Each pattern is a case-insensitive regex matched against the whole CSV record
 # (all columns joined). Use %FIELDNAME to restrict to a specific column, e.g.
 #   if %description ^PAYROLL
-#     account2 income:salary
+#     account2 revenue:salary
 
 if PAYROLL
   account2 revenue:salary

@@ -164,7 +164,7 @@ account2 expenses:unknown
 
 # Classification rules — top-to-bottom; later rules override earlier ones
 if PAYROLL
-  account2 income:salary
+  account2 revenue:salary
 
 if GROCERY|SUPERMARKET
   account2 expenses:food:groceries
@@ -354,7 +354,7 @@ Everything is optional.
 
 # [reports.metrics.accounts]
 # exclude_expenses = ["expenses:gross"]   # payroll deductions, excluded from daily avg
-# exclude_income   = ["income:gift"]      # windfalls, excluded from daily avg
+# exclude_revenue  = ["revenue:gift"]     # windfalls, excluded from daily avg
 # cash_assets      = "assets:cash"        # liquid cash account for short runway
 ```
 
@@ -491,20 +491,19 @@ adjustment in `_manual_`:
 ; [Auto-generated from bank statement]
 2026-03-01 Bank Deposit
   assets:checking     $2800.00
-  income:salary      $-2800.00
+  revenue:salary      $-2800.00
 
 ; [Added manually from payslip]
 2026-03-01 Payslip Adjustment
   expenses:taxes                 $400.00
   expenses:gross:retirement      $200.00
-  income:salary                 $-600.00
+  revenue:salary                 $-600.00
 ```
 
 The metrics report excludes `expenses:gross` by default when computing daily
 spending, so payroll deductions don't inflate your expense averages.
 
-**Note:** You can use either `income:` or `revenue:` as your top level account.
-Both will work as long as you are consistent.
+**Note:** This project uses `revenue:` as the top-level account for revenue.
 See [Account types](https://hledger.org/1.51/hledger.html#account-types).
 
 ### How do you handle foreign currency transactions? {#foreign-currency}
@@ -679,3 +678,25 @@ existing one:
 
 This approach is described in detail in
 [Full-fledged hledger](https://github.com/adept/full-fledged-hledger/wiki/Adding-more-accounts#lets-make-sure-that-transfers-are-not-double-counted).
+
+### How do you track subscriptions? {#subscriptions}
+
+You can either create an account `expenses:subscriptions` and classify them
+there, or use tags to track them while keeping them in their original
+categories:
+
+```
+if
+Netflix
+Spotify
+ account2 expenses:entertainment:subscriptions
+ comment subscription: true
+```
+
+This will output a transaction like this:
+
+```ledger
+2026-03-04 Spotify ; subscription:
+    assets:checking                              $-15.99
+    expenses:entertainment:subscriptions          $15.99
+```

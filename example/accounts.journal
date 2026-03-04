@@ -16,7 +16,7 @@
 account assets             ; type: A
 account liabilities        ; type: L
 account equity             ; type: E
-account revenues           ; type: R
+account revenue           ; type: R
 account expenses           ; type: X
 
 ; ── Subtypes ─────────────────────────────────────────────────────────────────
@@ -37,8 +37,8 @@ account liabilities:creditcard
 
 account equity:opening balances
 
-account revenues:salary
-account revenues:interest
+account revenue:salary
+account revenue:interest
 
 account expenses:food
 account expenses:food:groceries

@@ -10,12 +10,11 @@ equity
 equity:conversion
 equity:opening balances
 equity:unrealized_pnl
-revenues
-revenues:salary
-revenues:interest
+revenue
+revenue:salary
+revenue:interest
 expenses
 expenses:food
 expenses:food:groceries
 expenses:subscriptions
 expenses:unknown
-revenue:salary

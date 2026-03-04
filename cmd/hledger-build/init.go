@@ -56,7 +56,7 @@ const defaultToml = `# hledger-build.toml
 # currency    = ""          # e.g. "USD" to convert all values via --value=end
 # [reports.metrics.accounts]
 # exclude_expenses = ["expenses:gross"]   # payroll deductions excluded from daily avg
-# exclude_income   = ["income:gift"]      # windfalls excluded from daily avg
+# exclude_revenue  = ["revenue:gift"]     # windfalls excluded from daily avg
 # cash_assets      = "assets:cash"        # liquid account for short runway
 
 # --- Custom Reports ---
@@ -98,7 +98,7 @@ const accountsJournal = `; accounts.journal – account declarations.
 account assets             ; type: A
 account liabilities        ; type: L
 account equity             ; type: E
-account revenues           ; type: R
+account revenue            ; type: R
 account expenses           ; type: X
 
 ; ── Subtypes ─────────────────────────────────────────────────────────────────
@@ -119,8 +119,8 @@ account liabilities:creditcard
 
 account equity:opening balances
 
-account revenues:salary
-account revenues:interest
+account revenue:salary
+account revenue:interest
 
 account expenses:food
 account expenses:food:groceries
@@ -164,6 +164,7 @@ fields date, description, amount
 
 # Date format used by this bank's CSV export.
 date-format %Y-%m-%d
+decimal-mark .
 
 # ── Accounts ──────────────────────────────────────────────────────────────────
 
@@ -182,10 +183,10 @@ currency1 USD
 # Each pattern is a case-insensitive regex matched against the whole CSV record
 # (all columns joined). Use %FIELDNAME to restrict to a specific column, e.g.
 #   if %description ^PAYROLL
-#     account2 income:salary
+#     account2 revenue:salary
 
 if PAYROLL
-  account2 income:salary
+  account2 revenue:salary
 
 if GROCERY
   account2 expenses:food:groceries
