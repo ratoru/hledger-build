@@ -16,9 +16,19 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/fatih/color"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/ratoru/hledger-build/internal/manifest"
+)
+
+var (
+	clrSuccess  = color.New(color.FgGreen)
+	clrFail     = color.New(color.FgRed, color.Bold)
+	clrSkip     = color.New(color.Faint)
+	clrDryRun   = color.New(color.FgYellow)
+	clrWarn     = color.New(color.FgYellow)
+	clrErrLabel = color.New(color.FgRed, color.Bold)
 )
 
 // RunOpts configures the behaviour of RunSteps.
@@ -48,10 +58,10 @@ func HandleSignals(ctx context.Context, cancel context.CancelFunc, mf *manifest.
 		defer signal.Stop(ch)
 		select {
 		case <-ch:
-			fmt.Fprintln(os.Stderr, "\ninterrupted — saving manifest")
+			_, _ = clrWarn.Fprintln(os.Stderr, "\ninterrupted — saving manifest")
 			cancel()
 			if err := mf.Save(manifestPath); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: could not save manifest: %v\n", err)
+				_, _ = clrWarn.Fprintf(os.Stderr, "warning: could not save manifest: %v\n", err)
 			}
 		case <-ctx.Done():
 		}
@@ -88,7 +98,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 			if hasCancelledDep(step.Deps, cancelledOutputs) {
 				cancelledOutputs[step.Output] = true
 				if !opts.Quiet {
-					fmt.Printf("— %s\n", step.Output)
+					_, _ = clrSkip.Printf("— %s\n", step.Output)
 				}
 			} else {
 				toRun = append(toRun, step)
@@ -118,7 +128,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 
 			g.Go(func() error {
 				if err := executeStep(execCtx, step, mf, opts, &cachedCount); err != nil {
-					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					_, _ = clrErrLabel.Fprintf(os.Stderr, "error: %v\n", err)
 					mu.Lock()
 					tierFailed = append(tierFailed, step.Output)
 					mu.Unlock()
@@ -140,7 +150,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 	}
 
 	if n := cachedCount.Load(); n > 0 && !opts.Quiet {
-		fmt.Printf("⏭  skipped %d cached files\n", n)
+		_, _ = clrSkip.Printf("⏭  skipped %d cached files\n", n)
 	}
 
 	if ctx.Err() != nil {
@@ -164,7 +174,7 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 		if cached, ok := mf.Get(step.Output); ok && cached == hash {
 			if _, statErr := os.Stat(step.Output); statErr == nil {
 				if opts.Verbose && !opts.Quiet {
-					fmt.Printf("⏭  %s\n", step.Output)
+					_, _ = clrSkip.Printf("⏭  %s\n", step.Output)
 				} else if !opts.Quiet {
 					cachedCount.Add(1)
 				}
@@ -175,7 +185,7 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 
 	if opts.DryRun {
 		if !opts.Quiet {
-			fmt.Printf("+ %s (dry-run)\n", step.Output)
+			_, _ = clrDryRun.Printf("+ %s (dry-run)\n", step.Output)
 		}
 		return nil
 	}
@@ -202,10 +212,10 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 
 	if err := cmd.Run(); err != nil {
 		if !opts.Quiet {
-			fmt.Printf("✗ %s\n", step.Output)
+			_, _ = clrFail.Printf("✗ %s\n", step.Output)
 		}
 		if stderrBuf.Len() > 0 {
-			fmt.Fprintf(os.Stderr, "--- %s stderr ---\n%s\n", step.ID, stderrBuf.String())
+			_, _ = clrFail.Fprintf(os.Stderr, "--- %s stderr ---\n%s\n", step.ID, stderrBuf.String())
 		}
 		return fmt.Errorf("%s: %w", step.ID, err)
 	}
@@ -224,7 +234,8 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 	mf.Set(step.Output, hash)
 
 	if !opts.Quiet {
-		fmt.Printf("✓ %s\n", step.Output)
+		_, _ = clrSuccess.Printf("✓")
+		fmt.Printf(" %s\n", step.Output)
 	}
 	return nil
 }

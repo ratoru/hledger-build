@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/ratoru/hledger-build/internal/manifest"
@@ -75,8 +76,14 @@ func runStatus() error {
 
 	grandTotal := p1.total + p2.total
 	grandCached := p1.cached + p2.cached
-	fmt.Printf("\nTotal: %d steps, %d cached, %d to build\n",
-		grandTotal, grandCached, grandTotal-grandCached)
+	toBuild := grandTotal - grandCached
+	fmt.Printf("\nTotal: %d steps, %d cached, ", grandTotal, grandCached)
+	if toBuild > 0 {
+		_, _ = color.New(color.FgYellow).Printf("%d to build", toBuild)
+	} else {
+		_, _ = color.New(color.FgGreen).Printf("%d to build", toBuild)
+	}
+	fmt.Println()
 	return nil
 }
 
@@ -106,13 +113,20 @@ func gatherPassStats(tiers [][]runner.Step, mf *manifest.Manifest) passStats {
 
 // printPassStats prints the pass summary followed by per-tier breakdown.
 func printPassStats(label string, ps passStats, verbose bool) {
-	fmt.Printf("%s: %d steps (%d cached, %d to build)\n",
-		label, ps.total, ps.cached, ps.total-ps.cached)
+	toBuild := ps.total - ps.cached
+	_, _ = color.New(color.Bold).Printf("%s", label)
+	fmt.Printf(": %d steps (%d cached, ", ps.total, ps.cached)
+	if toBuild > 0 {
+		_, _ = color.New(color.FgYellow).Printf("%d to build", toBuild)
+	} else {
+		_, _ = color.New(color.FgGreen).Printf("%d to build", toBuild)
+	}
+	fmt.Println(")")
 	for i, ts := range ps.tiers {
 		fmt.Printf("  Tier %d: %d steps (%d cached)\n", i+1, ts.total, ts.cached)
 		if verbose {
 			for _, id := range ts.toBuild {
-				fmt.Printf("    + %s\n", id)
+				_, _ = color.New(color.FgYellow).Printf("    + %s\n", id)
 			}
 		}
 	}

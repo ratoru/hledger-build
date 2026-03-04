@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +45,7 @@ func runClean() error {
 		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("removing %s: %w", path, err)
 		}
-		fmt.Printf("removed  %s/\n", relOrAbs(cfg.ProjectRoot, path))
+		_, _ = color.New(color.FgYellow).Printf("removed  %s/\n", relOrAbs(cfg.ProjectRoot, path))
 	}
 
 	return nil

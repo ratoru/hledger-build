@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
 	"github.com/ratoru/hledger-build/internal/manifest"
@@ -112,7 +113,7 @@ func execPass(ctx context.Context, mf *manifest.Manifest, opts runner.RunOpts, l
 		return fmt.Errorf("sorting %s steps: %w", label, err)
 	}
 	if !opts.Quiet {
-		fmt.Printf("=== %s ===\n", label)
+		_, _ = color.New(color.Bold).Printf("=== %s ===\n", label)
 	}
 	return runner.RunSteps(ctx, tiers, mf, opts)
 }

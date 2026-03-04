@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
@@ -269,11 +270,11 @@ func runInit() error {
 
 	// Check for hledger in PATH.
 	if _, err := exec.LookPath("hledger"); err != nil {
-		fmt.Fprintln(os.Stderr, "\nwarning: hledger not found in PATH — install it before running hledger-build")
+		_, _ = color.New(color.FgYellow).Fprintln(os.Stderr, "\nwarning: hledger not found in PATH — install it before running hledger-build")
 		fmt.Fprintln(os.Stderr, "  https://hledger.org/install.html")
 	}
 
-	fmt.Println("\nProject initialised. Next steps:")
+	_, _ = color.New(color.FgGreen, color.Bold).Println("\nProject initialised. Next steps:")
 	fmt.Println("  1. Run: hledger-build run")
 	fmt.Printf("  2. Inspect the generated reports in reports/%s-*.txt\n", yearStr)
 	fmt.Println("  3. Replace the sample data with your real bank statements")
