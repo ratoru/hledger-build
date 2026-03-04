@@ -79,6 +79,55 @@ const defaultToml = `# hledger-build.toml
 # ]
 `
 
+// accountsJournal is the content of accounts.journal written at the project root.
+const accountsJournal = `; accounts.journal – account declarations.
+; Docs: https://hledger.org/1.51/hledger.html#account-directive
+;
+; These directives declare your chart of accounts. They enable:
+;   - balancesheet, incomestatement, cashflow reports (via type: tags)
+;   - consistent display order in all reports
+;   - strict-mode validation (-s/--strict) to catch mis-spelled account names
+;
+; Include this file in every year journal alongside commodities.journal.
+; Subaccounts inherit their parent's type, so you only need type: on parents.
+;
+; Adjust account names to match your setup and add subaccounts as needed.
+
+; ── Account types ────────────────────────────────────────────────────────────
+
+account assets             ; type: A
+account liabilities        ; type: L
+account equity             ; type: E
+account revenues           ; type: R
+account expenses           ; type: X
+
+; ── Subtypes ─────────────────────────────────────────────────────────────────
+
+; Cash: liquid assets used by the cashflow report
+account assets:cash        ; type: C
+account assets:mybank      ; type: C
+
+; Conversion: equity accounts used for commodity conversions
+account equity:conversion  ; type: V
+
+; ── Common subaccounts (adjust or extend to match your chart of accounts) ────
+
+account assets:mybank:checking
+account assets:mybank:savings
+
+account liabilities:creditcard
+
+account equity:opening balances
+
+account revenues:salary
+account revenues:interest
+
+account expenses:food
+account expenses:food:groceries
+account expenses:subscriptions
+account expenses:unknown
+`
+
 // commoditiesJournal is the content of commodities.journal written at the project root.
 const commoditiesJournal = `; commodities.journal – commodity format declarations.
 ; Docs: https://hledger.org/1.51/hledger.html#commodity-directive
@@ -214,6 +263,16 @@ func runInit() error {
 		fmt.Println("created  commodities.journal")
 	}
 
+	// Write accounts.journal — chart of accounts with type declarations that
+	// enable balancesheet, incomestatement, and cashflow reports.
+	accountsPath := filepath.Join(cwd, "accounts.journal")
+	if _, err := os.Stat(accountsPath); os.IsNotExist(err) {
+		if err := os.WriteFile(accountsPath, []byte(accountsJournal), 0o644); err != nil {
+			return fmt.Errorf("writing accounts.journal: %w", err)
+		}
+		fmt.Println("created  accounts.journal")
+	}
+
 	// Write a sample CSV file with two transactions so "hledger-build run"
 	// works out of the box and new users can see a real pipeline in action.
 	csvPath := filepath.Join(cwd, "sources", "mybank", "checking", "raw", yearStr, "transactions.csv")
@@ -329,6 +388,7 @@ func yearJournalContent(year int) string {
 			";   include reports/%d-opening.journal\n"+
 			"\n"+
 			"include commodities.journal\n"+
+			"include accounts.journal\n"+
 			"include sources/_manual_/%d/opening.journal\n"+
 			"include sources/%d-imports.journal\n",
 		year, year, year, year, year, year,

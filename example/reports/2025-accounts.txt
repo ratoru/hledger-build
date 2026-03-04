@@ -1,8 +1,21 @@
+assets
 assets:cash
+assets:mybank
 assets:mybank:checking
+assets:mybank:savings
 assets:pension:vanguard
+liabilities
+liabilities:creditcard
+equity
+equity:conversion
 equity:opening balances
 equity:unrealized_pnl
+revenues
+revenues:salary
+revenues:interest
+expenses
+expenses:food
 expenses:food:groceries
+expenses:subscriptions
 expenses:unknown
 revenue:salary

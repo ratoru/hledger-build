@@ -9,5 +9,6 @@
 ;   include reports/2026-opening.journal
 
 include commodities.journal
+include accounts.journal
 include sources/_manual_/2025/*.journal
 include sources/2025-imports.journal

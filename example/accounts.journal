@@ -1,0 +1,46 @@
+; accounts.journal – account declarations.
+; Docs: https://hledger.org/1.51/hledger.html#account-directive
+;
+; These directives declare your chart of accounts. They enable:
+;   - balancesheet, incomestatement, cashflow reports (via type: tags)
+;   - consistent display order in all reports
+;   - strict-mode validation (-s/--strict) to catch mis-spelled account names
+;
+; Include this file in every year journal alongside commodities.journal.
+; Subaccounts inherit their parent's type, so you only need type: on parents.
+;
+; Adjust account names to match your setup and add subaccounts as needed.
+
+; ── Account types ────────────────────────────────────────────────────────────
+
+account assets             ; type: A
+account liabilities        ; type: L
+account equity             ; type: E
+account revenues           ; type: R
+account expenses           ; type: X
+
+; ── Subtypes ─────────────────────────────────────────────────────────────────
+
+; Cash: liquid assets used by the cashflow report
+account assets:cash        ; type: C
+account assets:mybank      ; type: C
+
+; Conversion: equity accounts used for commodity conversions
+account equity:conversion  ; type: V
+
+; ── Common subaccounts (adjust or extend to match your chart of accounts) ────
+
+account assets:mybank:checking
+account assets:mybank:savings
+
+account liabilities:creditcard
+
+account equity:opening balances
+
+account revenues:salary
+account revenues:interest
+
+account expenses:food
+account expenses:food:groceries
+account expenses:subscriptions
+account expenses:unknown
