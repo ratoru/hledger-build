@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/sync/errgroup"
 
@@ -72,6 +73,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 	// Later-tier steps whose Deps intersect this set are skipped.
 	cancelledOutputs := make(map[string]bool)
 	totalFailed := 0
+	var cachedCount atomic.Int64
 
 	for _, tier := range tiers {
 		if ctx.Err() != nil {
@@ -115,7 +117,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 			}
 
 			g.Go(func() error {
-				if err := executeStep(execCtx, step, mf, opts); err != nil {
+				if err := executeStep(execCtx, step, mf, opts, &cachedCount); err != nil {
 					fmt.Fprintf(os.Stderr, "error: %v\n", err)
 					mu.Lock()
 					tierFailed = append(tierFailed, step.Output)
@@ -137,6 +139,10 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 		totalFailed += len(tierFailed)
 	}
 
+	if n := cachedCount.Load(); n > 0 && !opts.Quiet {
+		fmt.Printf("⏭  skipped %d cached files\n", n)
+	}
+
 	if ctx.Err() != nil {
 		return fmt.Errorf("build interrupted: %w", ctx.Err())
 	}
@@ -147,7 +153,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 }
 
 // executeStep runs a single step, skipping it when the cached hash matches.
-func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts RunOpts) error {
+func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts RunOpts, cachedCount *atomic.Int64) error {
 	hash, err := ComputeHash(step)
 	if err != nil {
 		return fmt.Errorf("%s: compute hash: %w", step.ID, err)
@@ -157,8 +163,10 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 	if !opts.Force {
 		if cached, ok := mf.Get(step.Output); ok && cached == hash {
 			if _, statErr := os.Stat(step.Output); statErr == nil {
-				if !opts.Quiet {
-					fmt.Printf("⏭ %s\n", step.Output)
+				if opts.Verbose && !opts.Quiet {
+					fmt.Printf("⏭  %s\n", step.Output)
+				} else if !opts.Quiet {
+					cachedCount.Add(1)
 				}
 				return nil
 			}
