@@ -98,7 +98,7 @@ commodity $1,000.00
 `
 
 // exampleRules is the hledger CSV rules file written to sources/mybank/checking/.
-const exampleRules = `# mybank.rules – hledger CSV import rules for MyBank checking account.
+const exampleRules = `# main.rules – hledger CSV import rules for MyBank checking account.
 # Documentation: https://hledger.org/hledger.html#csv-format
 
 # ── CSV format ────────────────────────────────────────────────────────────────
@@ -227,11 +227,11 @@ func runInit() error {
 	fmt.Printf("created  sources/_manual_/%s/opening.journal\n", yearStr)
 
 	// Write the hledger CSV rules file that maps CSV columns to accounts.
-	rulesPath := filepath.Join(cwd, "sources", "mybank", "checking", "mybank.rules")
+	rulesPath := filepath.Join(cwd, "sources", "mybank", "checking", "main.rules")
 	if err := os.WriteFile(rulesPath, []byte(exampleRules), 0o644); err != nil {
-		return fmt.Errorf("writing mybank.rules: %w", err)
+		return fmt.Errorf("writing main.rules: %w", err)
 	}
-	fmt.Println("created  sources/mybank/checking/mybank.rules")
+	fmt.Println("created  sources/mybank/checking/main.rules")
 
 	// Write the optional preprocess script (pass-through by default).
 	preprocessPath := filepath.Join(cwd, "sources", "mybank", "checking", "preprocess")
@@ -277,12 +277,12 @@ func runInit() error {
 	fmt.Println("  1. Run: hledger-build run")
 	fmt.Printf("  2. Inspect the generated reports in reports/%s-*.txt\n", yearStr)
 	fmt.Println("  3. Replace the sample data with your real bank statements")
-	fmt.Println("  4. Update sources/mybank/checking/mybank.rules to match your CSV columns")
+	fmt.Println("  4. Update sources/mybank/checking/main.rules to match your CSV columns")
 	return nil
 }
 
 // exampleCSVContent returns three sample transactions for the given year.
-// The descriptions are chosen to trigger classification rules in mybank.rules.
+// The descriptions are chosen to trigger classification rules in main.rules.
 func exampleCSVContent(year int) string {
 	return fmt.Sprintf(
 		"Date,Description,Amount\n"+

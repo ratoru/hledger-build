@@ -178,7 +178,8 @@ func TestYearOverride(t *testing.T) {
 	}
 }
 
-// TestRulesDiscovery checks rules files are found level by level.
+// TestRulesDiscovery checks that main.rules is discovered level by level and
+// the most specific one is returned as rulesFile.
 func TestRulesDiscovery(t *testing.T) {
 	dir := t.TempDir()
 	dirs := Directories{
@@ -192,36 +193,91 @@ func TestRulesDiscovery(t *testing.T) {
 		Manual:  "_manual_",
 	}
 
-	// Global rules
-	writeFile(t, filepath.Join(dir, "sources", "global.rules"), "")
-	// Source-specific rules
-	writeFile(t, filepath.Join(dir, "sources", "lloyds", "lloyds.rules"), "")
-	writeFile(t, filepath.Join(dir, "sources", "lloyds", "account.rules"), "")
-	// Unrelated file
+	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")
+	writeFile(t, filepath.Join(dir, "sources", "lloyds", "main.rules"), "include ../main.rules\n")
+	// Non-main rules file and unrelated file should be ignored.
+	writeFile(t, filepath.Join(dir, "sources", "lloyds", "other.rules"), "")
 	writeFile(t, filepath.Join(dir, "sources", "lloyds", "preprocess"), "")
 
-	rules, err := DiscoverRulesFiles(dir, dirs, "lloyds")
+	rulesFile, allFiles, err := DiscoverRulesFiles(dir, dirs, "lloyds")
 	if err != nil {
 		t.Fatalf("DiscoverRulesFiles: %v", err)
 	}
 
-	if len(rules) != 3 {
-		t.Fatalf("expected 3 rules files, got %d: %v", len(rules), rules)
+	// Most specific main.rules wins.
+	if rulesFile != "sources/lloyds/main.rules" {
+		t.Errorf("rulesFile = %q, want sources/lloyds/main.rules", rulesFile)
 	}
-	// Global rules come first
-	if rules[0] != "sources/global.rules" {
-		t.Errorf("rules[0] = %q, want sources/global.rules", rules[0])
+	// Both main.rules files are tracked as deps.
+	if len(allFiles) != 2 {
+		t.Fatalf("expected 2 allFiles, got %d: %v", len(allFiles), allFiles)
 	}
-	// Source-level rules sorted alpha
-	if rules[1] != "sources/lloyds/account.rules" {
-		t.Errorf("rules[1] = %q, want sources/lloyds/account.rules", rules[1])
+	if allFiles[0] != "sources/main.rules" {
+		t.Errorf("allFiles[0] = %q, want sources/main.rules", allFiles[0])
 	}
-	if rules[2] != "sources/lloyds/lloyds.rules" {
-		t.Errorf("rules[2] = %q, want sources/lloyds/lloyds.rules", rules[2])
+	if allFiles[1] != "sources/lloyds/main.rules" {
+		t.Errorf("allFiles[1] = %q, want sources/lloyds/main.rules", allFiles[1])
 	}
 }
 
-// TestRulesDiscoveryNested checks rules discovery for nested sources.
+// TestRulesDiscoveryFallback checks that a source with no main.rules falls
+// back to the nearest parent's main.rules.
+func TestRulesDiscoveryFallback(t *testing.T) {
+	dir := t.TempDir()
+	dirs := Directories{
+		Sources: "sources",
+		Reports: "reports",
+		Raw:     "raw",
+		Cleaned: "cleaned",
+		Journal: "journal",
+		Build:   ".build",
+		Prices:  "sources/prices",
+		Manual:  "_manual_",
+	}
+
+	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")
+	// No main.rules in sources/lloyds/.
+
+	rulesFile, allFiles, err := DiscoverRulesFiles(dir, dirs, "lloyds")
+	if err != nil {
+		t.Fatalf("DiscoverRulesFiles: %v", err)
+	}
+
+	if rulesFile != "sources/main.rules" {
+		t.Errorf("rulesFile = %q, want sources/main.rules", rulesFile)
+	}
+	if len(allFiles) != 1 || allFiles[0] != "sources/main.rules" {
+		t.Errorf("allFiles = %v, want [sources/main.rules]", allFiles)
+	}
+}
+
+// TestRulesDiscoveryNone checks that no rules files returns empty results.
+func TestRulesDiscoveryNone(t *testing.T) {
+	dir := t.TempDir()
+	dirs := Directories{
+		Sources: "sources",
+		Reports: "reports",
+		Raw:     "raw",
+		Cleaned: "cleaned",
+		Journal: "journal",
+		Build:   ".build",
+		Prices:  "sources/prices",
+		Manual:  "_manual_",
+	}
+
+	rulesFile, allFiles, err := DiscoverRulesFiles(dir, dirs, "lloyds")
+	if err != nil {
+		t.Fatalf("DiscoverRulesFiles: %v", err)
+	}
+	if rulesFile != "" {
+		t.Errorf("rulesFile = %q, want empty", rulesFile)
+	}
+	if len(allFiles) != 0 {
+		t.Errorf("allFiles = %v, want empty", allFiles)
+	}
+}
+
+// TestRulesDiscoveryNested checks that the deepest main.rules wins for nested sources.
 func TestRulesDiscoveryNested(t *testing.T) {
 	dir := t.TempDir()
 	dirs := Directories{
@@ -235,25 +291,28 @@ func TestRulesDiscoveryNested(t *testing.T) {
 		Manual:  "_manual_",
 	}
 
-	writeFile(t, filepath.Join(dir, "sources", "global.rules"), "")
-	writeFile(t, filepath.Join(dir, "sources", "john", "john.rules"), "")
-	writeFile(t, filepath.Join(dir, "sources", "john", "revolut", "revolut.rules"), "")
+	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")
+	writeFile(t, filepath.Join(dir, "sources", "john", "main.rules"), "# john\n")
+	writeFile(t, filepath.Join(dir, "sources", "john", "revolut", "main.rules"), "# revolut\n")
 
-	rules, err := DiscoverRulesFiles(dir, dirs, "john/revolut")
+	rulesFile, allFiles, err := DiscoverRulesFiles(dir, dirs, "john/revolut")
 	if err != nil {
 		t.Fatalf("DiscoverRulesFiles: %v", err)
 	}
 
-	if len(rules) != 3 {
-		t.Fatalf("expected 3 rules files, got %d: %v", len(rules), rules)
+	if rulesFile != "sources/john/revolut/main.rules" {
+		t.Errorf("rulesFile = %q, want sources/john/revolut/main.rules", rulesFile)
 	}
-	if rules[0] != "sources/global.rules" {
-		t.Errorf("rules[0] = %q", rules[0])
+	if len(allFiles) != 3 {
+		t.Fatalf("expected 3 allFiles, got %d: %v", len(allFiles), allFiles)
 	}
-	if rules[1] != "sources/john/john.rules" {
-		t.Errorf("rules[1] = %q", rules[1])
+	if allFiles[0] != "sources/main.rules" {
+		t.Errorf("allFiles[0] = %q", allFiles[0])
 	}
-	if rules[2] != "sources/john/revolut/revolut.rules" {
-		t.Errorf("rules[2] = %q", rules[2])
+	if allFiles[1] != "sources/john/main.rules" {
+		t.Errorf("allFiles[1] = %q", allFiles[1])
+	}
+	if allFiles[2] != "sources/john/revolut/main.rules" {
+		t.Errorf("allFiles[2] = %q", allFiles[2])
 	}
 }

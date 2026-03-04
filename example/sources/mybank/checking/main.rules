@@ -1,4 +1,4 @@
-# mybank.rules – hledger CSV import rules for MyBank checking account.
+# main.rules – hledger CSV import rules for MyBank checking account.
 # Documentation: https://hledger.org/hledger.html#csv-format
 
 # ── CSV format ────────────────────────────────────────────────────────────────

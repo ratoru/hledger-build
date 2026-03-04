@@ -5,3 +5,5 @@
 ;
 ; Add one include per year as your data grows:
 include 2026.journal
+; Once you have multiple years, include the closing journal for each year but the last:
+; include reports/2026-closing.journal

@@ -187,8 +187,8 @@ func TestPreprocessPresent(t *testing.T) {
 	}
 }
 
-// TestRulesFilesInDeps verifies that discovered rules files appear in the
-// convert step's deps and args.
+// TestRulesFilesInDeps verifies that the most specific main.rules is used as
+// the --rules arg, and all main.rules files across levels appear in deps.
 func TestRulesFilesInDeps(t *testing.T) {
 	dir := t.TempDir()
 	cfg := makeConfig(dir)
@@ -197,8 +197,8 @@ func TestRulesFilesInDeps(t *testing.T) {
 	cfg.CurrentYear = 2024
 
 	writeFile(t, filepath.Join(dir, "sources/bank/raw/2024/stmt.csv"), "date,amount\n")
-	writeFile(t, filepath.Join(dir, "sources/global.rules"), "# global\n")
-	writeFile(t, filepath.Join(dir, "sources/bank/bank.rules"), "# bank\n")
+	writeFile(t, filepath.Join(dir, "sources/main.rules"), "# global\n")
+	writeFile(t, filepath.Join(dir, "sources/bank/main.rules"), "include ../main.rules\n")
 
 	steps, err := GeneratePass1Steps(cfg)
 	if err != nil {
@@ -209,17 +209,57 @@ func TestRulesFilesInDeps(t *testing.T) {
 	}
 
 	s := steps[0]
-	if !containsStr(s.Deps, "sources/global.rules") {
-		t.Errorf("Deps %v missing sources/global.rules", s.Deps)
+	// Both main.rules files must be in deps for cache invalidation.
+	if !containsStr(s.Deps, "sources/main.rules") {
+		t.Errorf("Deps %v missing sources/main.rules", s.Deps)
 	}
-	if !containsStr(s.Deps, "sources/bank/bank.rules") {
-		t.Errorf("Deps %v missing sources/bank/bank.rules", s.Deps)
+	if !containsStr(s.Deps, "sources/bank/main.rules") {
+		t.Errorf("Deps %v missing sources/bank/main.rules", s.Deps)
 	}
-	if !containsStr(s.Args, "sources/global.rules") {
-		t.Errorf("Args %v missing sources/global.rules (--rules)", s.Args)
+	// Only the most specific main.rules is passed as --rules.
+	if !containsStr(s.Args, "sources/bank/main.rules") {
+		t.Errorf("Args %v missing sources/bank/main.rules", s.Args)
 	}
-	if !containsStr(s.Args, "sources/bank/bank.rules") {
-		t.Errorf("Args %v missing sources/bank/bank.rules (--rules)", s.Args)
+	if containsStr(s.Args, "sources/main.rules") {
+		t.Errorf("Args %v should not contain sources/main.rules (not passed directly)", s.Args)
+	}
+}
+
+// TestPerFileRulesOverride verifies that a <basename>.csv.rules file in the
+// source directory takes precedence over main.rules for that specific CSV.
+func TestPerFileRulesOverride(t *testing.T) {
+	dir := t.TempDir()
+	cfg := makeConfig(dir)
+	cfg.DiscoveredSources = []string{"bank"}
+	cfg.FirstYear = 2024
+	cfg.CurrentYear = 2024
+
+	writeFile(t, filepath.Join(dir, "sources/bank/raw/2024/stmt.csv"), "date,amount\n")
+	writeFile(t, filepath.Join(dir, "sources/bank/main.rules"), "# default\n")
+	writeFile(t, filepath.Join(dir, "sources/bank/stmt.csv.rules"), "# per-file override\n")
+
+	steps, err := GeneratePass1Steps(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(steps))
+	}
+
+	s := steps[0]
+	// Per-file override is used as --rules.
+	if !containsStr(s.Args, "sources/bank/stmt.csv.rules") {
+		t.Errorf("Args %v missing sources/bank/stmt.csv.rules", s.Args)
+	}
+	if containsStr(s.Args, "sources/bank/main.rules") {
+		t.Errorf("Args %v should not contain main.rules when per-file override exists", s.Args)
+	}
+	// Both files appear in deps.
+	if !containsStr(s.Deps, "sources/bank/stmt.csv.rules") {
+		t.Errorf("Deps %v missing sources/bank/stmt.csv.rules", s.Deps)
+	}
+	if !containsStr(s.Deps, "sources/bank/main.rules") {
+		t.Errorf("Deps %v missing sources/bank/main.rules", s.Deps)
 	}
 }
 
@@ -391,12 +431,12 @@ func TestRequiredScriptMissing(t *testing.T) {
 
 // TestHledgerArgsOrder verifies the canonical order of hledger arguments.
 func TestHledgerArgsOrder(t *testing.T) {
-	rules := []string{"sources/global.rules", "sources/bank/bank.rules"}
-	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", rules)
+	rulesFile := "sources/bank/main.rules"
+	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", rulesFile)
 
-	// Expected: -f <input> --rules r1 --rules r2 print
-	if len(args) < 6 {
-		t.Fatalf("args too short: %v", args)
+	// Expected: -f <input> --rules <file> print
+	if len(args) != 5 {
+		t.Fatalf("expected 5 args, got %d: %v", len(args), args)
 	}
 	if args[0] != "-f" {
 		t.Errorf("args[0] = %q, want -f", args[0])
@@ -407,8 +447,24 @@ func TestHledgerArgsOrder(t *testing.T) {
 	if args[2] != "--rules" {
 		t.Errorf("args[2] = %q, want --rules", args[2])
 	}
-	if args[len(args)-1] != "print" {
-		t.Errorf("last arg = %q, want print", args[len(args)-1])
+	if args[3] != rulesFile {
+		t.Errorf("args[3] = %q, want %q", args[3], rulesFile)
+	}
+	if args[4] != "print" {
+		t.Errorf("args[4] = %q, want print", args[4])
+	}
+}
+
+// TestHledgerArgsNoRules verifies that no --rules flag is added when rulesFile is empty.
+func TestHledgerArgsNoRules(t *testing.T) {
+	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", "")
+
+	// Expected: -f <input> print
+	if len(args) != 3 {
+		t.Fatalf("expected 3 args, got %d: %v", len(args), args)
+	}
+	if args[0] != "-f" || args[1] != "sources/bank/raw/2024/stmt.csv" || args[2] != "print" {
+		t.Errorf("unexpected args: %v", args)
 	}
 }
 

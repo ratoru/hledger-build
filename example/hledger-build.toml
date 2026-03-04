@@ -38,7 +38,7 @@
 [reports.metrics]
 # enabled     = true
 # fire_factor = 25          # FIRE multiplier (default 25 = 4% rule)
-age = 25 # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
+age         = 25           # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
 # currency    = ""          # e.g. "USD" to convert all values via --value=end
 # [reports.metrics.accounts]
 # exclude_expenses = ["expenses:gross"]   # payroll deductions excluded from daily avg
@@ -50,18 +50,16 @@ age = 25 # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
 # Record contributions to assets:pension:* (or similar) and periodic valuations
 # against equity:unrealized_pnl, then rebuild to get IRR and TWR.
 # See the docs for a full walkthrough.
+
 [[custom_reports]]
-name = "investments"
+name   = "investments"
 output = "investments.txt"
 script = "hledger"
-years = "all"
-args = [
-    "roi",
-    "-f",
-    "all.journal",
-    "--investment",
-    "acct:assets:pension",
-    "--pnl",
-    "acct:equity:unrealized_pnl",
-    "-Y",
+years  = "all"
+args   = [
+  "roi",
+  "-f", "all.journal",
+  "--investment", "acct:assets:pension",
+  "--pnl", "acct:equity:unrealized_pnl",
+  "-Y",
 ]

@@ -400,12 +400,16 @@ func discoverYears(projectRoot string, dirs Directories, sources []string) (firs
 	return
 }
 
-// DiscoverRulesFiles returns all *.rules files from sources/ down to the source
-// directory, sorted alphabetically within each level (broadest first).
-func DiscoverRulesFiles(projectRoot string, dirs Directories, sourceName string) ([]string, error) {
+// DiscoverRulesFiles walks from sources/ down to the source directory looking
+// for a "main.rules" file at each level. It returns:
+//   - rulesFile: the most specific (deepest) main.rules found, as a
+//     project-root-relative path; empty string if none exists.
+//   - allFiles: all main.rules files found at any level, for dependency
+//     tracking so that any change triggers a rebuild.
+func DiscoverRulesFiles(projectRoot string, dirs Directories, sourceName string) (rulesFile string, allFiles []string, err error) {
 	sourcesDir := filepath.Join(projectRoot, dirs.Sources)
 
-	// Build list of directory levels from sourcesDir down to sourceDir
+	// Build list of directory levels from sourcesDir down to sourceDir.
 	levels := []string{sourcesDir}
 	rel := filepath.FromSlash(sourceName)
 	parts := strings.Split(rel, string(filepath.Separator))
@@ -414,35 +418,20 @@ func DiscoverRulesFiles(projectRoot string, dirs Directories, sourceName string)
 		current = filepath.Join(current, part)
 		levels = append(levels, current)
 	}
-	// Remove duplicate: last level is sourceDir, already appended; remove sourcesDir duplicate
-	// Actually levels[0]=sourcesDir, levels[len-1]=sourceDir — that's correct.
 
-	var result []string
 	for _, dir := range levels {
-		entries, err := os.ReadDir(dir)
-		if os.IsNotExist(err) {
+		abs := filepath.Join(dir, "main.rules")
+		if _, statErr := os.Stat(abs); statErr != nil {
 			continue
 		}
-		if err != nil {
-			return nil, err
+		relPath, relErr := filepath.Rel(projectRoot, abs)
+		if relErr != nil {
+			return "", nil, relErr
 		}
-		var levelFiles []string
-		for _, e := range entries {
-			if e.IsDir() {
-				continue
-			}
-			if strings.HasSuffix(e.Name(), ".rules") {
-				abs := filepath.Join(dir, e.Name())
-				rel, err := filepath.Rel(projectRoot, abs)
-				if err != nil {
-					return nil, err
-				}
-				levelFiles = append(levelFiles, filepath.ToSlash(rel))
-			}
-		}
-		sort.Strings(levelFiles)
-		result = append(result, levelFiles...)
+		relPath = filepath.ToSlash(relPath)
+		allFiles = append(allFiles, relPath)
+		rulesFile = relPath // deepest found wins
 	}
 
-	return result, nil
+	return rulesFile, allFiles, nil
 }

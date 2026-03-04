@@ -441,25 +441,14 @@ func appendRuleHledger(cfg *config.Config, sourceDir, pattern, account, comment 
 	return err
 }
 
-// addAutoRulesInclude appends "include auto.rules" to the first .rules file in
-// sourceDir (excluding auto.rules itself), unless already present.
+// addAutoRulesInclude appends "include auto.rules" to main.rules in sourceDir,
+// unless already present. Returns an error if main.rules does not exist.
 func addAutoRulesInclude(sourceDir string) error {
-	entries, err := os.ReadDir(sourceDir)
-	if err != nil {
-		return err
+	mainRules := filepath.Join(sourceDir, "main.rules")
+	if _, err := os.Stat(mainRules); err != nil {
+		return fmt.Errorf("main.rules not found in %s: add 'include auto.rules' manually", sourceDir)
 	}
-	var rulesFiles []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".rules") || e.Name() == "auto.rules" {
-			continue
-		}
-		rulesFiles = append(rulesFiles, filepath.Join(sourceDir, e.Name()))
-	}
-	sort.Strings(rulesFiles)
-	if len(rulesFiles) == 0 {
-		return fmt.Errorf("no .rules file found in %s to add 'include auto.rules' to", sourceDir)
-	}
-	return appendIfAbsent(rulesFiles[0], "include auto.rules")
+	return appendIfAbsent(mainRules, "include auto.rules")
 }
 
 // collectAutoRulesComments returns unique comment strings found in auto.rules.

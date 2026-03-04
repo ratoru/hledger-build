@@ -33,7 +33,7 @@ func GeneratePass1Steps(cfg *config.Config) ([]runner.Step, error) {
 func generateSourceSteps(cfg *config.Config, sourceName string) ([]runner.Step, error) {
 	pipeline := effectivePipeline(cfg, sourceName)
 
-	rulesFiles, err := config.DiscoverRulesFiles(cfg.ProjectRoot, cfg.Directories, sourceName)
+	mainRulesFile, allRulesFiles, err := config.DiscoverRulesFiles(cfg.ProjectRoot, cfg.Directories, sourceName)
 	if err != nil {
 		return nil, fmt.Errorf("discovering rules: %w", err)
 	}
@@ -82,7 +82,7 @@ func generateSourceSteps(cfg *config.Config, sourceName string) ([]runner.Step, 
 
 		stageSteps, err := generateStageSteps(
 			cfg, sourceName, sourceDir, absSourceDir,
-			stage, effectiveInputDir, rulesFiles, override.ExtraDeps,
+			stage, effectiveInputDir, mainRulesFile, allRulesFiles, override.ExtraDeps,
 			latestStepOutputs,
 		)
 		if err != nil {
@@ -113,7 +113,7 @@ func generateStageSteps(
 	sourceName, sourceDir, absSourceDir string,
 	stage config.Pipeline,
 	effectiveInputDir string,
-	rulesFiles, extraDeps []string,
+	mainRulesFile string, allRulesFiles, extraDeps []string,
 	upstreamInputs []string,
 ) ([]runner.Step, error) {
 	if cfg.FirstYear == 0 && cfg.CurrentYear == 0 {
@@ -162,7 +162,7 @@ func generateStageSteps(
 			step, err := buildStep(
 				cfg, sourceDir, absSourceDir,
 				stage, inputRel, outputRel,
-				rulesFiles, extraDeps,
+				mainRulesFile, allRulesFiles, extraDeps,
 			)
 			if err != nil {
 				return nil, err
@@ -180,7 +180,7 @@ func buildStep(
 	sourceDir, absSourceDir string,
 	stage config.Pipeline,
 	inputRel, outputRel string,
-	rulesFiles, extraDeps []string,
+	mainRulesFile string, allRulesFiles, extraDeps []string,
 ) (runner.Step, error) {
 	var cmd string
 	var args []string
@@ -191,10 +191,24 @@ func buildStep(
 
 	if stage.Script == "hledger" {
 		cmd = cfg.HledgerBinary
-		args = buildHledgerArgs(inputRel, rulesFiles)
+
+		// Check for a per-file rules override: <sourceDir>/<basename>.csv.rules.
+		base := strings.TrimSuffix(filepath.Base(filepath.FromSlash(inputRel)), filepath.Ext(filepath.FromSlash(inputRel)))
+		perFileAbs := filepath.Join(absSourceDir, base+".csv.rules")
+		effectiveRules := mainRulesFile
+		if _, err := os.Stat(perFileAbs); err == nil {
+			perFileRel, err := filepath.Rel(cfg.ProjectRoot, perFileAbs)
+			if err != nil {
+				return runner.Step{}, err
+			}
+			effectiveRules = filepath.ToSlash(perFileRel)
+			deps = append(deps, effectiveRules)
+		}
+
+		args = buildHledgerArgs(inputRel, effectiveRules)
 		cwd = "" // run from project root (inherits process working directory)
-		// Rules files are hashed as deps to detect rule changes.
-		deps = append(deps, rulesFiles...)
+		// All main.rules files are deps so any change triggers a rebuild.
+		deps = append(deps, allRulesFiles...)
 	} else {
 		cmd = stage.Script
 		// Pass the input file relative to the source directory (the cwd).
@@ -227,11 +241,11 @@ func buildStep(
 }
 
 // buildHledgerArgs constructs the hledger arguments for CSV→journal conversion
-// via `hledger -f <input> [--rules r]... print`.
-func buildHledgerArgs(inputRel string, rulesFiles []string) []string {
+// via `hledger -f <input> [--rules r] print`.
+func buildHledgerArgs(inputRel string, rulesFile string) []string {
 	args := []string{"-f", inputRel}
-	for _, r := range rulesFiles {
-		args = append(args, "--rules", r)
+	if rulesFile != "" {
+		args = append(args, "--rules", rulesFile)
 	}
 	args = append(args, "print")
 	return args

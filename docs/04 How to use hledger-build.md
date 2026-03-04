@@ -40,7 +40,7 @@ my-ledger/
 │   │
 │   └── mybank/                 # one directory per data source
 │       └── checking/           # optional subdir
-│           ├── mybank.rules    # hledger CSV import rules
+│           ├── main.rules      # hledger CSV import rules (default for all CSVs)
 │           ├── preprocess      # optional: shell script to clean raw CSV
 │           ├── raw/            # ← drop your bank statement exports here
 │           │   └── 2026/
@@ -71,9 +71,11 @@ Key conventions:
   a `raw/` subdirectory is treated as a data source. `_manual_` is excluded.
 - **Years are auto-discovered**: 4-digit subdirectory names under any source's
   `raw/` directory, under `sources/_manual_/`, or under `prices/`.
-- **Rules files are discovered breadth-first**: `*.rules` files are searched
-  from `sources/` down to the data source directory. Later rules override earlier
-  ones.
+- **Rules files use a standard naming convention**: hledger-build looks for
+  `main.rules` starting in the source directory and walking up toward `sources/`.
+  The deepest (most specific) `main.rules` found is passed to hledger. For a
+  per-file override, place `<csvname>.csv.rules` in the source directory; it takes
+  precedence over `main.rules` for that specific CSV only.
 
 ## The ingest pipeline
 
@@ -121,12 +123,26 @@ python3 parse_brokerage.py "$1"
 The key difference from `preprocess`: this script's output IS the final
 `.journal` file, so it must produce valid hledger journal syntax.
 
-### The `.rules` file (hledger convert only)
+### The rules file (hledger convert only)
 
-hledger uses a `.rules` file to map CSV columns to journal fields and classify
-transactions. Rules files are discovered automatically from `sources/` down to
-your source directory, broadest first — so you can share common rules at a
-higher level and override them per source.
+Place a `main.rules` file in your source directory to tell hledger how to map
+CSV columns to journal fields and classify transactions.
+
+To share rules across sources, use hledger's `include` directive inside
+`main.rules` to pull in any file — it doesn't have to be named `main.rules`:
+
+```
+include ../shared.rules
+```
+
+However, hledger-build only **tracks changes** to files named `main.rules` at
+each directory level. If you name the shared file `main.rules` at a parent level
+(e.g. `sources/main.rules`), hledger-build will detect edits to it and rebuild
+automatically. Files included under any other name are not watched.
+
+If a single CSV needs different rules, place a `<csvname>.csv.rules` file
+alongside `main.rules` — it overrides `main.rules` for that file only.
+For example, `stmt.csv.rules` applies when processing `stmt.csv`.
 
 A minimal rules file:
 
@@ -454,7 +470,7 @@ extra_deps = ["prices/2026/prices.csv"]
    regenerated automatically.
 3. **Review** `reports/{year}-unknown.journal` for unclassified transactions.
 4. **Categorize** unknowns: run `hledger-build categorize` (interactive fzf
-   workflow), or manually add rules to your `.rules` file.
+   workflow), or manually add rules to your `main.rules` file.
 5. **Run again** to apply the new rules.
 6. **Commit** everything — raw exports, rules, journals, reports — to version
    control.
