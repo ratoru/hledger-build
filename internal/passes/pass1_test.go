@@ -216,10 +216,10 @@ func TestRulesFilesInDeps(t *testing.T) {
 		t.Errorf("Deps %v missing sources/bank/bank.rules", s.Deps)
 	}
 	if !containsStr(s.Args, "sources/global.rules") {
-		t.Errorf("Args %v missing sources/global.rules (--rules-file)", s.Args)
+		t.Errorf("Args %v missing sources/global.rules (--rules)", s.Args)
 	}
 	if !containsStr(s.Args, "sources/bank/bank.rules") {
-		t.Errorf("Args %v missing sources/bank/bank.rules (--rules-file)", s.Args)
+		t.Errorf("Args %v missing sources/bank/bank.rules (--rules)", s.Args)
 	}
 }
 
@@ -394,7 +394,7 @@ func TestHledgerArgsOrder(t *testing.T) {
 	rules := []string{"sources/global.rules", "sources/bank/bank.rules"}
 	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", rules)
 
-	// Expected: -f <input> --rules-file r1 --rules-file r2 print
+	// Expected: -f <input> --rules r1 --rules r2 print
 	if len(args) < 6 {
 		t.Fatalf("args too short: %v", args)
 	}
@@ -404,8 +404,8 @@ func TestHledgerArgsOrder(t *testing.T) {
 	if args[1] != "sources/bank/raw/2024/stmt.csv" {
 		t.Errorf("args[1] = %q, want input path", args[1])
 	}
-	if args[2] != "--rules-file" {
-		t.Errorf("args[2] = %q, want --rules-file", args[2])
+	if args[2] != "--rules" {
+		t.Errorf("args[2] = %q, want --rules", args[2])
 	}
 	if args[len(args)-1] != "print" {
 		t.Errorf("last arg = %q, want print", args[len(args)-1])

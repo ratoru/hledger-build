@@ -227,11 +227,11 @@ func buildStep(
 }
 
 // buildHledgerArgs constructs the hledger arguments for CSV→journal conversion
-// via `hledger -f <input> [--rules-file r]... print`.
+// via `hledger -f <input> [--rules r]... print`.
 func buildHledgerArgs(inputRel string, rulesFiles []string) []string {
 	args := []string{"-f", inputRel}
 	for _, r := range rulesFiles {
-		args = append(args, "--rules-file", r)
+		args = append(args, "--rules", r)
 	}
 	args = append(args, "print")
 	return args
