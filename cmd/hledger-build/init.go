@@ -344,8 +344,10 @@ func allJournalContent(year int) string {
 			";   hledger -f all.journal balance\n"+
 			";\n"+
 			"; Add one include per year as your data grows:\n"+
-			"include %d.journal\n",
-		year,
+			"include %d.journal\n"+
+			"; Once you have multiple years, include the closing journal for each year but the last:\n"+
+			"; include reports/%d-closing.journal\n",
+		year, year,
 	)
 }
 

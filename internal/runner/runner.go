@@ -116,6 +116,7 @@ func RunSteps(ctx context.Context, tiers [][]Step, mf *manifest.Manifest, opts R
 
 			g.Go(func() error {
 				if err := executeStep(execCtx, step, mf, opts); err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
 					mu.Lock()
 					tierFailed = append(tierFailed, step.Output)
 					mu.Unlock()
