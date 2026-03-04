@@ -19,13 +19,13 @@ func makePass2Config(dir string, firstYear, currentYear int) *config.Config {
 	cfg.EquityQuery = "assets|liabilities|debts"
 	cfg.SelfBinary = "hledger-build"
 	cfg.Reports = config.Reports{
-		Transactions:   config.BuiltinReport{Args: []string{"print"}, Enabled: true},
-		Accounts:       config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
-		IncomeExpenses: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
-		BalanceSheet:   config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-		Cashflow:       config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-		Unknown:        config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
-		Metrics:        config.MetricsReport{Enabled: true, FireFactor: 25},
+		Transactions:    config.BuiltinReport{Args: []string{"print"}, Enabled: true},
+		Accounts:        config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
+		IncomeStatement: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
+		BalanceSheet:    config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
+		Cashflow:        config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
+		Unknown:         config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+		Metrics:         config.MetricsReport{Enabled: true, FireFactor: 25},
 	}
 	return cfg
 }
@@ -118,7 +118,7 @@ func TestPass2OutputPaths(t *testing.T) {
 	wantOutputs := []string{
 		"reports/2024-all.journal",
 		"reports/2024-accounts.txt",
-		"reports/2024-income-expenses.txt",
+		"reports/2024-income-statement.txt",
 		"reports/2024-balance-sheet.txt",
 		"reports/2024-cashflow.txt",
 		"reports/2024-unknown.journal",
@@ -270,7 +270,7 @@ func TestPass2ReportsDependOnOpening(t *testing.T) {
 	reportOutputs := []string{
 		"reports/2024-all.journal",
 		"reports/2024-accounts.txt",
-		"reports/2024-income-expenses.txt",
+		"reports/2024-income-statement.txt",
 		"reports/2024-balance-sheet.txt",
 		"reports/2024-cashflow.txt",
 		"reports/2024-unknown.journal",

@@ -222,7 +222,7 @@ Add `--cost --value=then,£` to the reports that should convert commodities.
 In `hledger-build.toml`:
 
 ```toml
-[reports.income_expenses]
+[reports.income_statement]
 args = ["is", "--flat", "--no-elide", "--cost", "--value=then,£"]
 
 [reports.balance_sheet]

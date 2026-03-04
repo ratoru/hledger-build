@@ -23,7 +23,7 @@ command: hledger
 args: -f 2023.journal equity assets|liabilities|debts -e 2024 -I --closing
 deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
 
-output: reports/2023-income-expenses.txt
+output: reports/2023-income-statement.txt
 command: hledger
 args: -f 2023.journal is --flat --no-elide --cost
 deps: 2023.journal sources/bank1/checking/journal/2023/jan.journal sources/bank2/savings/journal/2023/jan.journal
@@ -53,7 +53,7 @@ command: hledger
 args: -f 2024.journal cashflow not:desc:(opening balances) --no-elide
 deps: 2024.journal reports/2024-opening.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal
 
-output: reports/2024-income-expenses.txt
+output: reports/2024-income-statement.txt
 command: hledger
 args: -f 2024.journal is --flat --no-elide --cost
 deps: 2024.journal reports/2024-opening.journal sources/bank1/checking/journal/2024/jan.journal sources/bank2/savings/journal/2024/jan.journal

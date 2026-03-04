@@ -33,7 +33,7 @@ currency1 $
 #     account2 income:salary
 
 if PAYROLL
-  account2 income:salary
+  account2 revenue:salary
 
 if GROCERY
   account2 expenses:food:groceries

@@ -214,5 +214,5 @@ treatment, the Beancount documentation is excellent:
     In traditional double-entry accounting, this account type is usually
     called **Revenue**. The word "income" there refers to **net income** — the
     difference between revenue and expenses (i.e., profit). Plain-text accounting
-    tools (hledger, Beancount, Ledger) use **Income** as the account type name
-    instead.
+    tools like hledger often use **Income** as the account type name instead since
+    it is more intuitive for personal finance.

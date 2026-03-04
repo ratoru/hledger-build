@@ -55,7 +55,7 @@ my-ledger/
 ├── reports/                    # all generated reports land here
 │   ├── 2026-all.journal
 │   ├── 2026-accounts.txt
-│   ├── 2026-income-expenses.txt
+│   ├── 2026-income-statement.txt
 │   ├── 2026-balance-sheet.txt
 │   ├── 2026-cashflow.txt
 │   ├── 2026-unknown.journal
@@ -254,15 +254,15 @@ previous year's equity. Replace the hand-written `opening.journal` include with
 
 hledger-build generates these reports for every year in your configured range:
 
-| Output file                  | Content                                      |
-| ---------------------------- | -------------------------------------------- |
-| `{year}-all.journal`         | All transactions (`hledger print`)           |
-| `{year}-accounts.txt`        | Account list (`hledger accounts`)            |
-| `{year}-income-expenses.txt` | Income statement                             |
-| `{year}-balance-sheet.txt`   | Balance sheet                                |
-| `{year}-cashflow.txt`        | Cash flow statement                          |
-| `{year}-unknown.journal`     | Unclassified transactions for review         |
-| `{year}-metrics.txt`         | Monthly personal finance metrics (see below) |
+| Output file                   | Content                                      |
+| ----------------------------- | -------------------------------------------- |
+| `{year}-all.journal`          | All transactions (`hledger print`)           |
+| `{year}-accounts.txt`         | Account list (`hledger accounts`)            |
+| `{year}-income-statement.txt` | Income statement                             |
+| `{year}-balance-sheet.txt`    | Balance sheet                                |
+| `{year}-cashflow.txt`         | Cash flow statement                          |
+| `{year}-unknown.journal`      | Unclassified transactions for review         |
+| `{year}-metrics.txt`          | Monthly personal finance metrics (see below) |
 
 For multi-year setups, hledger-build also generates:
 
@@ -329,7 +329,7 @@ Everything is optional.
 # args    = ["accounts"]
 # enabled = true
 #
-# [reports.income_expenses]
+# [reports.income_statement]
 # args    = ["is", "--flat", "--no-elide", "--cost"]
 # enabled = true
 #
@@ -503,6 +503,10 @@ adjustment in `_manual_`:
 The metrics report excludes `expenses:gross` by default when computing daily
 spending, so payroll deductions don't inflate your expense averages.
 
+**Note:** You can use either `income:` or `revenue:` as your top level account.
+Both will work as long as you are consistent.
+See [Account types](https://hledger.org/1.51/hledger.html#account-types).
+
 ### How do you handle foreign currency transactions? {#foreign-currency}
 
 Record the native-currency cost on the expense posting using `@@` (total cost):
@@ -514,7 +518,7 @@ Record the native-currency cost on the expense posting using `@@` (total cost):
 ```
 
 hledger shows `€11.65` by default and `$10.00` when `--cost` is passed. The
-built-in income/expenses report already uses `--cost`, so foreign-currency
+built-in income statement report already uses `--cost`, so foreign-currency
 expenses appear in your native currency automatically.
 
 When your bank statement embeds the foreign-currency amount in a description

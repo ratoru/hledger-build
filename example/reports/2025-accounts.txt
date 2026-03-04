@@ -5,4 +5,4 @@ equity:opening balances
 equity:unrealized_pnl
 expenses:food:groceries
 expenses:unknown
-income:salary
+revenue:salary

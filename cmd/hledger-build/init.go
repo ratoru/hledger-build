@@ -42,7 +42,7 @@ const defaultToml = `# hledger-build.toml
 # [reports]
 # transactions     = { args = ["print"] }
 # accounts         = { args = ["accounts"] }
-# income_expenses  = { args = ["is", "--flat", "--no-elide", "--cost"] }
+# income_statement = { args = ["is", "--flat", "--no-elide", "--cost"] }
 # balance_sheet    = { args = ["balancesheet", "--no-elide"] }
 # cashflow         = { args = ["cashflow", "not:desc:(opening balances)", "--no-elide"] }
 # unknown          = { args = ["print", "unknown"] }

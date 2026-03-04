@@ -88,7 +88,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 		builtins := []builtinDef{
 			{cfg.Reports.Transactions, cfg.Directories.Reports + "/" + yearStr + "-all.journal"},
 			{cfg.Reports.Accounts, cfg.Directories.Reports + "/" + yearStr + "-accounts.txt"},
-			{cfg.Reports.IncomeExpenses, cfg.Directories.Reports + "/" + yearStr + "-income-expenses.txt"},
+			{cfg.Reports.IncomeStatement, cfg.Directories.Reports + "/" + yearStr + "-income-statement.txt"},
 			{cfg.Reports.BalanceSheet, cfg.Directories.Reports + "/" + yearStr + "-balance-sheet.txt"},
 			{cfg.Reports.Cashflow, cfg.Directories.Reports + "/" + yearStr + "-cashflow.txt"},
 			{cfg.Reports.Unknown, cfg.Directories.Reports + "/" + yearStr + "-unknown.journal"},

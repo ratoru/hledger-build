@@ -143,12 +143,12 @@ func TestGoldenPass2Steps(t *testing.T) {
 			Manual:  "_manual_",
 		},
 		Reports: config.Reports{
-			Transactions:   config.BuiltinReport{Args: []string{"print"}, Enabled: true},
-			Accounts:       config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
-			IncomeExpenses: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
-			BalanceSheet:   config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-			Cashflow:       config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-			Unknown:        config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+			Transactions:    config.BuiltinReport{Args: []string{"print"}, Enabled: true},
+			Accounts:        config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
+			IncomeStatement: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
+			BalanceSheet:    config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
+			Cashflow:        config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
+			Unknown:         config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
 		},
 		Sources: map[string]config.SourceOverride{},
 	}

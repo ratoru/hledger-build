@@ -91,13 +91,13 @@ type CustomReport struct {
 
 // Reports holds the built-in report configurations.
 type Reports struct {
-	Transactions   BuiltinReport `mapstructure:"transactions"`
-	Accounts       BuiltinReport `mapstructure:"accounts"`
-	IncomeExpenses BuiltinReport `mapstructure:"income_expenses"`
-	BalanceSheet   BuiltinReport `mapstructure:"balance_sheet"`
-	Cashflow       BuiltinReport `mapstructure:"cashflow"`
-	Unknown        BuiltinReport `mapstructure:"unknown"`
-	Metrics        MetricsReport `mapstructure:"metrics"`
+	Transactions    BuiltinReport `mapstructure:"transactions"`
+	Accounts        BuiltinReport `mapstructure:"accounts"`
+	IncomeStatement BuiltinReport `mapstructure:"income_statement"`
+	BalanceSheet    BuiltinReport `mapstructure:"balance_sheet"`
+	Cashflow        BuiltinReport `mapstructure:"cashflow"`
+	Unknown         BuiltinReport `mapstructure:"unknown"`
+	Metrics         MetricsReport `mapstructure:"metrics"`
 }
 
 // Config is the root configuration struct.
@@ -155,12 +155,12 @@ func defaultPipeline() []Pipeline {
 // defaultReports returns built-in report definitions with their default args.
 func defaultReports() Reports {
 	return Reports{
-		Transactions:   BuiltinReport{Args: []string{"print"}, Enabled: true},
-		Accounts:       BuiltinReport{Args: []string{"accounts"}, Enabled: true},
-		IncomeExpenses: BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
-		BalanceSheet:   BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-		Cashflow:       BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-		Unknown:        BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+		Transactions:    BuiltinReport{Args: []string{"print"}, Enabled: true},
+		Accounts:        BuiltinReport{Args: []string{"accounts"}, Enabled: true},
+		IncomeStatement: BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
+		BalanceSheet:    BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
+		Cashflow:        BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
+		Unknown:         BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
 	}
 }
 
@@ -184,7 +184,7 @@ func Load(path string) (*Config, error) {
 	// Reports are enabled by default; users must explicitly set enabled=false to disable.
 	v.SetDefault("reports.transactions.enabled", true)
 	v.SetDefault("reports.accounts.enabled", true)
-	v.SetDefault("reports.income_expenses.enabled", true)
+	v.SetDefault("reports.income_statement.enabled", true)
 	v.SetDefault("reports.balance_sheet.enabled", true)
 	v.SetDefault("reports.cashflow.enabled", true)
 	v.SetDefault("reports.unknown.enabled", true)
@@ -243,8 +243,8 @@ func Load(path string) (*Config, error) {
 	if len(cfg.Reports.Accounts.Args) == 0 {
 		cfg.Reports.Accounts.Args = defaults.Accounts.Args
 	}
-	if len(cfg.Reports.IncomeExpenses.Args) == 0 {
-		cfg.Reports.IncomeExpenses.Args = defaults.IncomeExpenses.Args
+	if len(cfg.Reports.IncomeStatement.Args) == 0 {
+		cfg.Reports.IncomeStatement.Args = defaults.IncomeStatement.Args
 	}
 	if len(cfg.Reports.BalanceSheet.Args) == 0 {
 		cfg.Reports.BalanceSheet.Args = defaults.BalanceSheet.Args

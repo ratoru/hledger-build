@@ -1,18 +1,18 @@
-Income Statement 2025, converted to cost
+Income Statement 2026, converted to cost
 
-                         ||    2025 
+                         ||    2026 
 =========================++=========
  Revenues                ||         
 -------------------------++---------
- income:salary           || 3200.00 
+ revenue:salary          || 3200.00 
 -------------------------++---------
                          || 3200.00 
 =========================++=========
  Expenses                ||         
 -------------------------++---------
- expenses:food:groceries ||  152.40 
- expenses:unknown        ||   18.01 
+ expenses:food:groceries ||   52.40 
+ expenses:unknown        ||   20.01 
 -------------------------++---------
-                         ||  170.41 
+                         ||   72.41 
 =========================++=========
- Net:                    || 3029.59 
+ Net:                    || 3127.59 
