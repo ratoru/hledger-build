@@ -22,6 +22,17 @@ I suggest reading my guides in the following order:
 
 If you'd like to dive in deeper, I recommend checking out [Further Reading](#further-reading) below.
 
+## Installation
+
+Download a pre-built binary from the [releases page](https://github.com/ratoru/hledger-build/releases),
+or install with Go:
+
+```bash
+go install github.com/ratoru/hledger-build/cmd/hledger-build@latest
+```
+
+This requires Go 1.26+ and places the binary in `~/go/bin/`. Make sure that directory is in your `PATH`.
+
 ## Quick Start
 
 ```bash

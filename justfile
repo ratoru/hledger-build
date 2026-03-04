@@ -14,3 +14,5 @@ demo:
     just build
     (cd example && ./hledger-build init)
 
+install:
+  go install ./cmd/hledger-build/

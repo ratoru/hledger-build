@@ -12,6 +12,8 @@ import (
 	"github.com/ratoru/hledger-build/internal/runner"
 )
 
+var version = "dev"
+
 // ── Global flag variables (set by persistent flags on root command) ────────────
 
 var (
@@ -27,8 +29,9 @@ var (
 // buildRootCmd constructs the root cobra command with all subcommands.
 func buildRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "hledger-build",
-		Short: "Incremental build system for hledger personal finance plain text accounting",
+		Use:     "hledger-build",
+		Version: version,
+		Short:   "Incremental build system for hledger personal finance plain text accounting",
 		Long: `hledger-build orchestrates the processing of raw bank data into hledger
 journal files and reports.
 
