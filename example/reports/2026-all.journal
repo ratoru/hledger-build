@@ -1,10 +1,11 @@
-2026-01-01 opening balances
-    assets:mybank:checking                  = 1000.00
-    assets:cash                             = 200.00
-    equity:opening balances
+2026-01-01 opening balances  ; clopen:2026
+    assets:cash                             $200.00 = $200.00
+    assets:mybank:checking                 $2029.59 = $2029.59
+    assets:pension:vanguard                $2087.50 = $2087.50
+    equity:opening/closing balances
 
 2026-01-15 ACME CORP PAYROLL
-    assets:mybank:checking       $3,200.00
+    assets:mybank:checking        $3200.00
     income:salary                 -3200.00
 
 2026-01-16 SUBWAY
@@ -32,6 +33,6 @@
     assets:pension:vanguard
 
 2026-12-31 pension valuation
-    assets:pension:vanguard                 = $2,087.50
+    assets:pension:vanguard                 = $4186.50
     equity:unrealized_pnl
 

@@ -255,6 +255,48 @@ func TestPass2OpeningDepsIncludeClosing(t *testing.T) {
 	}
 }
 
+// TestPass2ReportsDependOnOpening verifies that for years after the first, all
+// built-in report steps explicitly depend on the generated opening journal.
+// GetIncludes cannot discover that dep when the file doesn't exist yet (first
+// run), so pass2 must inject it directly into reportDeps.
+func TestPass2ReportsDependOnOpening(t *testing.T) {
+	cfg := makePass2Config(t.TempDir(), 2023, 2024)
+
+	steps, err := GeneratePass2Steps(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	reportOutputs := []string{
+		"reports/2024-all.journal",
+		"reports/2024-accounts.txt",
+		"reports/2024-income-expenses.txt",
+		"reports/2024-balance-sheet.txt",
+		"reports/2024-cashflow.txt",
+		"reports/2024-unknown.journal",
+		"reports/2024-metrics.txt",
+	}
+	for _, out := range reportOutputs {
+		s, ok := findStep(steps, out)
+		if !ok {
+			t.Errorf("step %q not found", out)
+			continue
+		}
+		if !containsStr(s.Deps, "reports/2024-opening.journal") {
+			t.Errorf("step %q Deps %v missing reports/2024-opening.journal", out, s.Deps)
+		}
+	}
+
+	// First-year (2023) report steps must NOT depend on a non-existent 2023-opening.
+	s, ok := findStep(steps, "reports/2023-balance-sheet.txt")
+	if !ok {
+		t.Fatal("2023 balance-sheet step not found")
+	}
+	if containsStr(s.Deps, "reports/2023-opening.journal") {
+		t.Error("2023 report unexpectedly depends on reports/2023-opening.journal")
+	}
+}
+
 // ── Deps from includes ────────────────────────────────────────────────────────
 
 // TestPass2YearDepsFromIncludes verifies that includes found in the year journal

@@ -1,7 +1,7 @@
 assets:cash
 assets:mybank:checking
 assets:pension:vanguard
-equity:opening/closing balances
+equity:opening balances
 equity:unrealized_pnl
 expenses:food:groceries
 expenses:unknown

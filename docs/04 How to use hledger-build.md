@@ -198,15 +198,19 @@ include sources/2026-imports.journal
 **When you add a new source**, hledger-build automatically adds it to the
 imports stub on the next run — no changes to your year journals needed.
 
-**When you add a new year**, create `{year}.journal` with the same three-line
-pattern above, adjusting the year number.
+**When you add a new year**, create `{year}.journal` following the pattern in
+the [multi-year FAQ](#multiple-years): replace the hand-written `opening.journal`
+include with `include reports/{year}-opening.journal` for all years after the first.
 
-`all.journal` is a convenience file for running ad-hoc multi-year queries:
+`all.journal` is a convenience file for running ad-hoc multi-year queries.
+Years are listed in chronological order, with a closing journal inserted after
+each year except the last — see [How do you manage multiple years?](#multiple-years).
 
 ```ledger
 ; all.journal
-include 2026.journal
 include 2025.journal
+include reports/2025-closing.journal   ; zeroes assets/liabilities at end of 2025
+include 2026.journal                   ; current year — no closing yet
 ```
 
 ### Commodity declarations
@@ -477,7 +481,7 @@ extra_deps = ["prices/2026/prices.csv"]
 
 ## FAQ and Tips
 
-### Record your gross income
+### Record your gross income {#gross-income}
 
 Accurate gross income helps with savings rate and tax calculations. Bank
 statements show only the net deposit. If you receive a salary, add a monthly
@@ -525,6 +529,80 @@ FOREIGN CCY
 
 See the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
 for a worked example with a real bank CSV.
+
+### How do you manage multiple years of financial data? {#multiple-years}
+
+#### Why bother with per-year files?
+
+You could include all imported journals directly in a single `all.journal` and
+skip the yearly split entirely. For one or two years that is fine, but once you
+accumulate 5–10 years of data the downsides become real:
+
+- **Speed**: hledger's startup time grows noticeably with journal size. A single
+  file forces you to supply `--begin` and `--end` to almost every query, which
+  gets tedious fast. With per-year files you just run `hledger -f 2023.journal`
+  and you're done.
+- **Incremental rebuilds**: When any transaction changes, hledger-build only
+  needs to regenerate reports for the affected year. With a single journal every
+  change forces a full rebuild.
+
+#### The role of closing and opening journals
+
+When you track multiple years you need consistent balances in two situations:
+
+1. **Single-year query** (`hledger -f 2024.journal`): assets and liabilities
+   should open at the correct balances for that year.
+2. **Multi-year query** (`hledger -f all.journal`): the same assets and
+   liabilities must not be counted twice at year boundaries.
+
+hledger-build generates two journal files per year boundary to solve this:
+
+- `reports/{year}-closing.journal` — a transaction on the last day of `{year}`
+  that zeroes out all assets and liabilities (vs `equity:closing balances`).
+  Used only in `all.journal`, between consecutive years.
+- `reports/{year}-opening.journal` — a mirror transaction on the first day of
+  `{year}` that reinstates the correct opening balances. Included in
+  `{year}.journal` so that the standalone per-year view starts correctly.
+
+```
+all.journal:
+  include 2023.journal
+  include reports/2023-closing.journal  ◀── zeroes assets/liabilities at end of 2023
+  include 2024.journal                        ├── includes reports/2024-opening.journal
+  include reports/2024-closing.journal        │   (reinstates correct opening for 2024)
+  include 2025.journal                        └── ...
+```
+
+#### Setting up a new year
+
+When you add `2024.journal` for the first time and already have `2023.journal`:
+
+1. **Create `2024.journal`** with opening balances from the generated journal
+   instead of a hand-written `opening.journal`:
+
+   ```ledger
+   ; 2024.journal
+   include commodities.journal
+   include reports/2024-opening.journal   ; ← auto-generated from 2023's final balances
+   include sources/2024-imports.journal
+   ```
+
+2. **Update `all.journal`** to insert the closing journal for 2023 between the
+   two years:
+
+   ```ledger
+   ; all.journal
+   include 2023.journal
+   include reports/2023-closing.journal   ; ← zeroes assets/liabilities at end of 2023
+   include 2024.journal
+   ```
+
+3. **Run `hledger-build`**. The pipeline generates `reports/2023-closing.journal`
+   and `reports/2024-opening.journal` automatically, in the right order.
+
+The first year keeps its hand-written `sources/_manual_/{year}/opening.journal`
+with real account balances. Every subsequent year replaces that with
+`include reports/{year}-opening.journal`.
 
 ### How do you balance transfers between 2 accounts when you have statements for both accounts? {#transfer-2-accounts}
 

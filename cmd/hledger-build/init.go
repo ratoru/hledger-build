@@ -82,6 +82,7 @@ const defaultToml = `# hledger-build.toml
 
 // commoditiesJournal is the content of commodities.journal written at the project root.
 const commoditiesJournal = `; commodities.journal – commodity format declarations.
+; Docs: https://hledger.org/1.51/hledger.html#commodity-directive
 ;
 ; These directives tell hledger the canonical display format for each commodity.
 ; Include this file in every year journal to ensure consistent formatting
@@ -90,11 +91,11 @@ const commoditiesJournal = `; commodities.journal – commodity format declarati
 ; Adjust the format and add more commodities or assets as needed.
 
 ; US Dollar — two decimal places, comma thousands separator
-commodity $1,000.00
+commodity 1,000.00 USD
 
 ; Uncomment and adjust for other currencies or assets you track:
 ; commodity £1_000.00
-; commodity €1.000,00
+; commodity 1.000,00 EUR
 ; commodity AAPL 1.0000
 `
 
@@ -108,6 +109,8 @@ const exampleRules = `# main.rules – hledger CSV import rules for MyBank check
 skip 1
 
 # Map the three CSV columns to hledger field names by position (1-based).
+# Whenever you use one of the special hledger field names, it assigns the CSV 
+# value in this position to that hledger field.
 # Adjust these to match your bank's actual column order and headers.
 fields date, description, amount
 
@@ -124,7 +127,7 @@ account1 assets:mybank:checking
 account2 expenses:unknown
 
 # Base Currency
-currency1 $
+currency1 USD
 
 # ── Classification rules ──────────────────────────────────────────────────────
 # Rules are applied top-to-bottom; later matches override earlier ones.
@@ -305,8 +308,8 @@ func openingJournalContent(year int) string {
 			"; or plain amounts if you prefer not to assert.\n"+
 			"\n"+
 			"%d-01-01 opening balances\n"+
-			"    assets:mybank:checking         = 1000.00\n"+
-			"    assets:cash                    =  200.00\n"+
+			"    assets:mybank:checking         = USD 1000.00\n"+
+			"    assets:cash                    =  USD 200.00\n"+
 			"    equity:opening balances\n",
 		year, year,
 	)

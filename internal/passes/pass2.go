@@ -57,6 +57,28 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 			return nil, err
 		}
 
+		// reportDeps is yearDeps plus the generated opening journal for years
+		// after the first. {year}.journal includes reports/{year}-opening.journal,
+		// but that file doesn't exist on the first run so GetIncludes can't
+		// discover it. We add it explicitly so all report steps wait for the
+		// opening step before running.
+		reportDeps := yearDeps
+		if year > cfg.FirstYear {
+			openingPath := cfg.Directories.Reports + "/" + yearStr + "-opening.journal"
+			found := false
+			for _, d := range yearDeps {
+				if d == openingPath {
+					found = true
+					break
+				}
+			}
+			if !found {
+				merged := make([]string, len(yearDeps), len(yearDeps)+1)
+				copy(merged, yearDeps)
+				reportDeps = append(merged, openingPath)
+			}
+		}
+
 		// ── Built-in reports ──────────────────────────────────────────────
 
 		type builtinDef struct {
@@ -83,7 +105,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 			steps = append(steps, runner.Step{
 				ID:            b.output,
 				Output:        b.output,
-				Deps:          yearDeps,
+				Deps:          reportDeps,
 				Command:       cfg.HledgerBinary,
 				Args:          args,
 				CaptureStdout: true,
@@ -98,7 +120,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 			steps = append(steps, runner.Step{
 				ID:      metricsOutput,
 				Output:  metricsOutput,
-				Deps:    yearDeps,
+				Deps:    reportDeps,
 				Command: cfg.SelfBinary,
 				Args: []string{
 					"metrics",

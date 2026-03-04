@@ -1,0 +1,28 @@
+Financial Metrics: 2025
+Generated: 2026-03-04
+
+Month         Daily Exp    Daily Inc    Net Worth   Savings%  Short Run   Long Run        FIRE#      Min AAW      Min PAW
+---------- ------------ ------------ ------------ ---------- ---------- ---------- ------------ -------------- --------------
+2025-01            0.58       103.23      4381.99      99.4%       344d      7543d      5301.33     47096.77    188387.10
+2025-02            5.44        -0.00      4229.59          —        37d       777d     49666.07        -0.00        -0.00
+2025-03            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-04            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-05            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-06            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-07            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-08            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-09            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-10            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-11            0.00        -0.00      4229.59          —          —          —            —        -0.00        -0.00
+2025-12            0.00        -0.00      4317.09          —          —          —            —        -0.00        -0.00
+---------- ------------ ------------ ------------ ---------- ---------- ---------- ------------ -------------- --------------
+Year Avg           0.47         8.77      4317.09      94.7%       428d      9247d      4260.25      4000.00     16000.00
+
+Notes:
+  Daily Exp/Inc: average for the month/year, excl. pay deductions/gifts
+  Net Worth:     assets minus liabilities at end of period
+  Savings%:      (take-home income - expenses) / take-home income
+  Short Runway:  liquid cash / daily expense
+  Long Runway:   total assets / daily expense
+  FIRE#:         25x annual expenses (Financial Independence, Retire Early)
+  AAW/PAW:       Target net worth benchmarks (Average/Prodigious Accumulator of Wealth) at age 25

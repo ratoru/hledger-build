@@ -1,0 +1,37 @@
+2025-01-01 opening balances
+    assets:mybank:checking                  = $1000.00
+    assets:cash                             = $200.00
+    equity:opening balances
+
+2025-01-15 ACME CORP PAYROLL
+    assets:mybank:checking        $3200.00
+    income:salary                 -3200.00
+
+2025-01-20 SUBWAY
+    assets:mybank:checking         $-18.01
+    expenses:unknown                 18.01
+
+2025-01-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2025-02-04 CORNER GROCERY STORE
+    assets:mybank:checking         $-152.40
+    expenses:food:groceries          152.40
+
+2025-04-30 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2025-07-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2025-10-31 (BP) Vanguard 401k contribution
+    assets:mybank:checking         $-500.00
+    assets:pension:vanguard
+
+2025-12-31 pension valuation
+    assets:pension:vanguard                 = $2087.50
+    equity:unrealized_pnl
+

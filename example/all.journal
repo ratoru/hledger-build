@@ -4,6 +4,7 @@
 ;   hledger -f all.journal balance
 ;
 ; Add one include per year as your data grows:
-include 2026.journal
+include 2025.journal
 ; Once you have multiple years, include the closing journal for each year but the last:
-; include reports/2026-closing.journal
+include reports/2025-closing.journal
+include 2026.journal

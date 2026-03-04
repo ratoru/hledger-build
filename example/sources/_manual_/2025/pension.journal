@@ -1,24 +1,24 @@
 ; pension.journal – pension contributions and year-end valuation for 2026.
 
 ; Quarterly contributions from checking into pension
-2026-01-31 (BP) Vanguard 401k contribution
+2025-01-31 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
     assets:pension:vanguard
 
-2026-04-30 (BP) Vanguard 401k contribution
+2025-04-30 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
     assets:pension:vanguard
 
-2026-07-31 (BP) Vanguard 401k contribution
+2025-07-31 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
     assets:pension:vanguard
 
-2026-10-31 (BP) Vanguard 401k contribution
+2025-10-31 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
     assets:pension:vanguard
 
 ; Year-end valuation – record the actual account value reported by the
 ; institution. The difference vs cost basis goes to equity:unrealized_pnl.
-2026-12-31 pension valuation
-    assets:pension:vanguard        = $4186.50
+2025-12-31 pension valuation
+    assets:pension:vanguard        = $2087.50
     equity:unrealized_pnl

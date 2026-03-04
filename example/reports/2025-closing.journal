@@ -1,0 +1,6 @@
+2025-12-31 closing balances  ; clopen:2026
+    assets:cash                            $-200.00 = $0.00
+    assets:mybank:checking                $-2029.59 = $0.00
+    assets:pension:vanguard               $-2087.50 = $0.00
+    equity:opening/closing balances
+

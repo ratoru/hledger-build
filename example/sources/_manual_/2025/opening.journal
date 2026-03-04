@@ -1,10 +1,10 @@
-; opening.journal – initial account balances as of 2026-01-01.
+; opening.journal – initial account balances as of 2025-01-01.
 ;
 ; Record the real balances of every account on the day you start tracking.
 ; Use = for balance assertions (hledger verifies the running total matches)
 ; or plain amounts if you prefer not to assert.
 
-2026-01-01 opening balances
-    assets:mybank:checking         = 1000.00
-    assets:cash                    =  200.00
+2025-01-01 opening balances
+    assets:mybank:checking         = $1,000.00
+    assets:cash                    =   $200.00
     equity:opening balances

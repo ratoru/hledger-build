@@ -7,9 +7,9 @@
 ; Adjust the format and add more commodities or assets as needed.
 
 ; US Dollar — two decimal places, comma thousands separator
-commodity $1,000.00
+commodity USD 1,000.00
+commodity EUR 1.000,00
 
 ; Uncomment and adjust for other currencies or assets you track:
 ; commodity £1_000.00
-; commodity €1.000,00
 ; commodity AAPL 1.0000
