@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -271,10 +270,9 @@ func runInit() error {
 		fmt.Println("updated  .gitignore")
 	}
 
-	// Check for hledger in PATH.
-	if _, err := exec.LookPath("hledger"); err != nil {
-		_, _ = color.New(color.FgYellow).Fprintln(os.Stderr, "\nwarning: hledger not found in PATH — install it before running hledger-build")
-		fmt.Fprintln(os.Stderr, "  https://hledger.org/install.html")
+	// Check for hledger in PATH and that it meets the minimum version.
+	if err := checkHledgerVersion("hledger"); err != nil {
+		_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "\nwarning: %v\n", err)
 	}
 
 	_, _ = color.New(color.FgGreen, color.Bold).Println("\nProject initialised. Next steps:")

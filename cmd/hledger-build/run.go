@@ -60,6 +60,9 @@ func runPipeline(ctx context.Context, mode passMode) error {
 	if err != nil {
 		return err
 	}
+	if err := checkHledgerVersion(cfg.HledgerBinary); err != nil {
+		return err
+	}
 
 	// Generate Pass 1 steps upfront so we can write import stubs before any
 	// pass runs. The stubs (reports/{year}-imports.journal) tell each year

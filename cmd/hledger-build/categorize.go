@@ -64,6 +64,9 @@ func runCategorize(unknownAccount, yearsFlag string) error {
 	if err != nil {
 		return err
 	}
+	if err := checkHledgerVersion(cfg.HledgerBinary); err != nil {
+		return err
+	}
 
 	if cfg.FirstYear == 0 || cfg.CurrentYear == 0 {
 		return fmt.Errorf("no years configured or discovered; add CSV files under sources/ first")

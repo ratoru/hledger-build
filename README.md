@@ -35,10 +35,13 @@ This requires Go 1.26+ and places the binary in `~/go/bin/`. Make sure that dire
 
 ## Quick Start
 
+First, install the latest version of [hledger](https://hledger.org/install.html). Then, run
+
 ```bash
-# Install hledger first: https://hledger.org/install.html
-hledger-build init    # scaffold a new project
-hledger-build         # run the full pipeline
+# scaffold a new project
+hledger-build init
+ # run the full pipeline
+hledger-build
 ```
 
 After updating `hledger-build`, run `hledger-build --force` to regenerate all files.
@@ -55,7 +58,7 @@ Please install
 ## Further Reading
 
 - [plaintextaccounting.org](https://plaintextaccounting.org) — community hub for plain-text accounting tools and workflows
-- [hledger manual](https://hledger.org/hledger.html) — full reference for hledger, including the CSV rules format
+- [hledger manual](https://hledger.org/hledger.html) — seriously, this is a good read!
 - [Why plain-text accounting?](https://beancount.github.io/docs/command_line_accounting_in_context.html)
 - [full-fledged-hledger](https://github.com/adept/full-fledged-hledger) — the multi-year, multi-account workflow that inspired hledger-build
 - [hledger-flow](https://github.com/apauley/hledger-flow) — another automation tool for hledger workflows

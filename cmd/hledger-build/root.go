@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime/debug"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -129,6 +132,43 @@ func runOpts(cfg *config.Config) runner.RunOpts {
 		Quiet:    cfg.Quiet,
 		FailFast: cfg.FailFast,
 	}
+}
+
+// ── hledger version check ──────────────────────────────────────────────────────
+
+const (
+	minHledgerMajor = 1
+	minHledgerMinor = 51
+)
+
+// checkHledgerVersion runs `binary --version` and returns an error if the
+// reported version is too old.
+func checkHledgerVersion(binary string) error {
+	out, err := exec.Command(binary, "--version").Output()
+	if err != nil {
+		return fmt.Errorf("%q not found or failed to run: %w", binary, err)
+	}
+	// Output: "hledger 1.51.2, mac-aarch64"
+	line := strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
+	parts := strings.Fields(line)
+	if len(parts) < 2 {
+		return fmt.Errorf("unexpected %q --version output: %q", binary, line)
+	}
+	verStr := strings.TrimRight(parts[1], ",")
+	segments := strings.SplitN(verStr, ".", 3)
+	if len(segments) < 2 {
+		return fmt.Errorf("could not parse version from %q --version output: %q", binary, line)
+	}
+	major, err1 := strconv.Atoi(segments[0])
+	minor, err2 := strconv.Atoi(segments[1])
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("could not parse version from %q --version output: %q", binary, line)
+	}
+	if major < minHledgerMajor || (major == minHledgerMajor && minor < minHledgerMinor) {
+		return fmt.Errorf("%q is version %s, but >= %d.%d is required (see https://hledger.org/install.html)",
+			binary, verStr, minHledgerMajor, minHledgerMinor)
+	}
+	return nil
 }
 
 // relOrAbs returns path relative to base, falling back to absolute on error.
