@@ -50,6 +50,7 @@ Running without a subcommand is equivalent to 'hledger-build run'.`,
 		},
 		SilenceUsage: true,
 	}
+	root.CompletionOptions.HiddenDefaultCmd = true
 
 	// Persistent (global) flags available to all subcommands.
 	pf := root.PersistentFlags()
