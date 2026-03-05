@@ -1,4 +1,5 @@
-package template
+// Package varsubst provides string template variable substitution ({year}, {basename}, etc.).
+package varsubst
 
 import "strings"
 

@@ -37,7 +37,7 @@ func Load(path string) (*Manifest, error) {
 	var m Manifest
 	if err := json.Unmarshal(data, &m); err != nil {
 		// Corrupt file — start fresh.
-		return empty(), nil
+		return empty(), nil //nolint:nilerr // intentional: discard corrupt manifest and start fresh
 	}
 	if m.Version != currentVersion {
 		return empty(), nil

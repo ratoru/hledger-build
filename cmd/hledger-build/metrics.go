@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"math"
@@ -28,15 +29,27 @@ func newMetricsCmd() *cobra.Command {
 		Use:   "metrics",
 		Short: "Compute monthly personal finance metrics for a single year",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMetrics(flagFile, flagYear, flagFireFactor, flagExcludeExpenses, flagExcludeRevenue, flagCashAssets, flagCurrency, flagAge)
+			return runMetrics(
+				cmd.Context(),
+				flagFile,
+				flagYear,
+				flagFireFactor,
+				flagExcludeExpenses,
+				flagExcludeRevenue,
+				flagCashAssets,
+				flagCurrency,
+				flagAge,
+			)
 		},
 		SilenceUsage: true,
 	}
 	cmd.Flags().StringVarP(&flagFile, "file", "f", "", "journal file (required)")
 	cmd.Flags().IntVar(&flagYear, "year", 0, "year (required)")
 	cmd.Flags().IntVar(&flagFireFactor, "fire-factor", 25, "FIRE multiplier")
-	cmd.Flags().StringSliceVar(&flagExcludeExpenses, "exclude-expenses", []string{"expenses:gross"}, "expense accounts to exclude from daily avg (comma-separated)")
-	cmd.Flags().StringSliceVar(&flagExcludeRevenue, "exclude-revenue", []string{"revenue:gift"}, "revenue accounts to exclude from daily avg (comma-separated)")
+	cmd.Flags().
+		StringSliceVar(&flagExcludeExpenses, "exclude-expenses", []string{"expenses:gross"}, "expense accounts to exclude from daily avg (comma-separated)")
+	cmd.Flags().
+		StringSliceVar(&flagExcludeRevenue, "exclude-revenue", []string{"revenue:gift"}, "revenue accounts to exclude from daily avg (comma-separated)")
 	cmd.Flags().StringVar(&flagCashAssets, "cash-assets", "assets:cash", "liquid cash account for short runway")
 	cmd.Flags().StringVar(&flagCurrency, "currency", "", "target currency for --value=end (empty = native)")
 	cmd.Flags().IntVar(&flagAge, "age", 0, "age for AAW/PAW thresholds (0 = skip)")
@@ -46,7 +59,16 @@ func newMetricsCmd() *cobra.Command {
 }
 
 // runMetrics runs hledger queries, computes metrics, and writes the report to stdout.
-func runMetrics(journalFile string, year, fireFactor int, excludeExpenses, excludeRevenue []string, cashAssets, currency string, age int) error {
+//
+//nolint:gocyclo // financial metrics require building many dynamic queries and conditional table columns
+func runMetrics(
+	ctx context.Context,
+	journalFile string,
+	year, fireFactor int,
+	excludeExpenses, excludeRevenue []string,
+	cashAssets, currency string,
+	age int,
+) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -66,7 +88,9 @@ func runMetrics(journalFile string, year, fireFactor int, excludeExpenses, exclu
 
 	runQuery := func(extraArgs ...string) (string, error) {
 		args := append(append([]string{}, baseArgs...), extraArgs...)
-		cmd := exec.Command(cfg.HledgerBinary, args...)
+		cmd := exec.CommandContext(ctx,
+			cfg.HledgerBinary,
+			args...)
 		out, err := cmd.Output()
 		if err != nil {
 			return "", fmt.Errorf("hledger %v: %w", args, err)

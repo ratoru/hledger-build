@@ -2,6 +2,7 @@ package runner
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -45,8 +46,8 @@ func ComputeHash(step Step) (string, error) {
 	}
 
 	// Collect all dep paths, starting with the explicit ones.
-	deps := make([]string, len(step.Deps))
-	copy(deps, step.Deps)
+	deps := make([]string, 0, len(step.Deps)+1)
+	deps = append(deps, step.Deps...)
 
 	// Include the script binary as an implicit dep when it is a local file.
 	if isLocalFilePath(step.Command) {
@@ -66,7 +67,7 @@ func ComputeHash(step Step) (string, error) {
 		_, _ = fmt.Fprintf(h, "dep:%s:%s\n", dep, contentHash)
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // isLocalFilePath reports whether cmd is a relative path to a local file
@@ -80,7 +81,7 @@ func isLocalFilePath(cmd string) bool {
 // resolveLocalCommand resolves a local-file Command to a path suitable for
 // opening. If cwd is non-empty the command is joined with cwd (since it is
 // relative to the working directory, not the project root). The returned path
-// is cleaned with filepath.Clean.
+// is cleaned with [filepath.Clean].
 func resolveLocalCommand(cmd, cwd string) string {
 	if cwd != "" {
 		return filepath.Clean(filepath.Join(cwd, cmd))
@@ -106,7 +107,7 @@ func hashFile(path string) (string, error) {
 	if _, err := io.Copy(h, f); err != nil {
 		return "", fmt.Errorf("reading %q: %w", path, err)
 	}
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // uniqueSorted returns a new deduplicated and sorted copy of ss.

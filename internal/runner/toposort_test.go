@@ -190,14 +190,14 @@ func TestTopoSort_DeterministicOrder(t *testing.T) {
 	a := makeStep("a", "a.txt")
 	b := makeStep("b", "b.txt")
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		tiers, err := TopoSort([]Step{b, a}) // shuffled input
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		ids := tierIDs(tiers)
 		if ids[0][0] != "a" || ids[0][1] != "b" {
-			t.Fatalf("iteration %d: expected [a b], got %v", i, ids[0])
+			t.Fatalf("expected [a b], got %v", ids[0])
 		}
 	}
 }

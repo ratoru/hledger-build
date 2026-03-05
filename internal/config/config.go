@@ -1,3 +1,4 @@
+// Package config provides configuration loading and discovery for hledger-build.
 package config
 
 import (
@@ -159,8 +160,11 @@ func defaultReports() Reports {
 		Accounts:        BuiltinReport{Args: []string{"accounts"}, Enabled: true},
 		IncomeStatement: BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
 		BalanceSheet:    BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-		Cashflow:        BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-		Unknown:         BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+		Cashflow: BuiltinReport{
+			Args:    []string{"cashflow", "not:desc:(opening balances)", "--no-elide"},
+			Enabled: true,
+		},
+		Unknown: BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
 	}
 }
 
@@ -341,7 +345,7 @@ func discoverSources(projectRoot string, dirs Directories) ([]string, error) {
 
 // discoverYears scans raw/{year}/, sources/_manual_/{year}/, and prices/{year}/
 // for 4-digit subdirectory names and returns the min and max years found.
-func discoverYears(projectRoot string, dirs Directories, sources []string) (first, current int, err error) {
+func discoverYears(projectRoot string, dirs Directories, sources []string) (int, int, error) {
 	yearSet := map[int]struct{}{}
 
 	collectYears := func(dir string) error {
@@ -368,27 +372,28 @@ func discoverYears(projectRoot string, dirs Directories, sources []string) (firs
 	// Scan raw/{year}/ for each discovered source
 	for _, src := range sources {
 		rawDir := filepath.Join(projectRoot, dirs.Sources, src, dirs.Raw)
-		if err = collectYears(rawDir); err != nil {
-			return
+		if err := collectYears(rawDir); err != nil {
+			return 0, 0, err
 		}
 	}
 
 	// Scan sources/_manual_/{year}/
 	manualDir := filepath.Join(projectRoot, dirs.Sources, dirs.Manual)
-	if err = collectYears(manualDir); err != nil {
-		return
+	if err := collectYears(manualDir); err != nil {
+		return 0, 0, err
 	}
 
 	// Scan prices/{year}/
 	pricesDir := filepath.Join(projectRoot, dirs.Prices)
-	if err = collectYears(pricesDir); err != nil {
-		return
+	if err := collectYears(pricesDir); err != nil {
+		return 0, 0, err
 	}
 
 	if len(yearSet) == 0 {
 		return 0, 0, nil
 	}
 
+	var first, current int
 	for y := range yearSet {
 		if first == 0 || y < first {
 			first = y
@@ -397,7 +402,7 @@ func discoverYears(projectRoot string, dirs Directories, sources []string) (firs
 			current = y
 		}
 	}
-	return
+	return first, current, nil
 }
 
 // DiscoverRulesFiles walks from sources/ down to the source directory looking
@@ -406,7 +411,11 @@ func discoverYears(projectRoot string, dirs Directories, sources []string) (firs
 //     project-root-relative path; empty string if none exists.
 //   - allFiles: all main.rules files found at any level, for dependency
 //     tracking so that any change triggers a rebuild.
-func DiscoverRulesFiles(projectRoot string, dirs Directories, sourceName string) (rulesFile string, allFiles []string, err error) {
+func DiscoverRulesFiles(
+	projectRoot string,
+	dirs Directories,
+	sourceName string,
+) (string, []string, error) {
 	sourcesDir := filepath.Join(projectRoot, dirs.Sources)
 
 	// Build list of directory levels from sourcesDir down to sourceDir.
@@ -419,6 +428,8 @@ func DiscoverRulesFiles(projectRoot string, dirs Directories, sourceName string)
 		levels = append(levels, current)
 	}
 
+	var rulesFile string
+	var allFiles []string
 	for _, dir := range levels {
 		abs := filepath.Join(dir, "main.rules")
 		if _, statErr := os.Stat(abs); statErr != nil {

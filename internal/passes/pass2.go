@@ -1,15 +1,17 @@
 package passes
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/ratoru/hledger-build/internal/config"
 	"github.com/ratoru/hledger-build/internal/discovery"
 	"github.com/ratoru/hledger-build/internal/runner"
-	"github.com/ratoru/hledger-build/internal/template"
+	"github.com/ratoru/hledger-build/internal/varsubst"
 )
 
 // GeneratePass2Steps generates all report and balance steps (Pass 2).
@@ -65,17 +67,8 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 		reportDeps := yearDeps
 		if year > cfg.FirstYear {
 			openingPath := cfg.Directories.Reports + "/" + yearStr + "-opening.journal"
-			found := false
-			for _, d := range yearDeps {
-				if d == openingPath {
-					found = true
-					break
-				}
-			}
-			if !found {
-				merged := make([]string, len(yearDeps), len(yearDeps)+1)
-				copy(merged, yearDeps)
-				reportDeps = append(merged, openingPath)
+			if !slices.Contains(yearDeps, openingPath) {
+				reportDeps = append(append([]string(nil), yearDeps...), openingPath)
 			}
 		}
 
@@ -242,7 +235,6 @@ func customReportToSteps(
 	reportsDir := cfg.Directories.Reports
 
 	switch {
-
 	// ── Mode 1: years="all" with per-year output ──────────────────────────
 	case cr.Years == "all" && strings.Contains(cr.Output, "{year}"):
 		var steps []runner.Step
@@ -250,7 +242,7 @@ func customReportToSteps(
 			yearStr := strconv.Itoa(year)
 			vars := map[string]string{"year": yearStr}
 
-			output := resolveCustomOutput(reportsDir, template.Apply(cr.Output, vars))
+			output := resolveCustomOutput(reportsDir, varsubst.Apply(cr.Output, vars))
 			args := applyTemplateSlice(cr.Args, vars)
 
 			deps, err := getYearDeps(year)
@@ -305,7 +297,7 @@ func customReportToSteps(
 		toStr := strconv.Itoa(toYear)
 		vars := map[string]string{"from_year": fromStr, "to_year": toStr}
 
-		output := resolveCustomOutput(reportsDir, template.Apply(cr.Output, vars))
+		output := resolveCustomOutput(reportsDir, varsubst.Apply(cr.Output, vars))
 		args := applyTemplateSlice(cr.Args, vars)
 
 		// Deps: union of all year includes in [fromYear, toYear].
@@ -326,7 +318,7 @@ func customReportToSteps(
 
 		// Explicit depends_on (template-expanded, resolved to project-root path).
 		for _, dep := range cr.DependsOn {
-			depPath := resolveReportDep(reportsDir, template.Apply(dep, vars))
+			depPath := resolveReportDep(reportsDir, varsubst.Apply(dep, vars))
 			if !seen[depPath] {
 				seen[depPath] = true
 				deps = append(deps, depPath)
@@ -391,14 +383,14 @@ func unionYearDeps(cfg *config.Config, getYearDeps func(int) ([]string, error)) 
 
 // resolveYearRange parses from_year and to_year from the config map,
 // treating the string "current" as cfg.CurrentYear.
-func resolveYearRange(yr map[string]string, currentYear int) (from, to int, err error) {
+func resolveYearRange(yr map[string]string, currentYear int) (int, int, error) {
 	fromStr, ok := yr["from_year"]
 	if !ok {
-		return 0, 0, fmt.Errorf("year_range missing from_year")
+		return 0, 0, errors.New("year_range missing from_year")
 	}
 	toStr, ok := yr["to_year"]
 	if !ok {
-		return 0, 0, fmt.Errorf("year_range missing to_year")
+		return 0, 0, errors.New("year_range missing to_year")
 	}
 
 	parse := func(s string) (int, error) {
@@ -412,10 +404,12 @@ func resolveYearRange(yr map[string]string, currentYear int) (from, to int, err 
 		return v, nil
 	}
 
-	if from, err = parse(fromStr); err != nil {
+	from, err := parse(fromStr)
+	if err != nil {
 		return 0, 0, fmt.Errorf("from_year: %w", err)
 	}
-	if to, err = parse(toStr); err != nil {
+	to, err := parse(toStr)
+	if err != nil {
 		return 0, 0, fmt.Errorf("to_year: %w", err)
 	}
 	return from, to, nil
@@ -441,11 +435,11 @@ func resolveCustomOutput(reportsDir, output string) string {
 	return reportsDir + "/" + output
 }
 
-// applyTemplateSlice applies template.Apply to each element of slice.
+// applyTemplateSlice applies varsubst.Apply to each element of slice.
 func applyTemplateSlice(slice []string, vars map[string]string) []string {
 	out := make([]string, len(slice))
 	for i, s := range slice {
-		out[i] = template.Apply(s, vars)
+		out[i] = varsubst.Apply(s, vars)
 	}
 	return out
 }

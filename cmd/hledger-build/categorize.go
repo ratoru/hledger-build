@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,9 +17,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/ratoru/hledger-build/internal/config"
+	"github.com/spf13/cobra"
 )
 
 // txn represents a single unknown transaction discovered from a report.
@@ -43,7 +44,7 @@ main .rules file via "include auto.rules".
 
 Requires fzf in PATH. Uses ripgrep (rg) when available, falling back to grep.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCategorize(unknownAccount, yearsFlag)
+			return runCategorize(cmd.Context(), unknownAccount, yearsFlag)
 		},
 		SilenceUsage: true,
 	}
@@ -55,30 +56,30 @@ Requires fzf in PATH. Uses ripgrep (rg) when available, falling back to grep.`,
 	return cmd
 }
 
-func runCategorize(unknownAccount, yearsFlag string) error {
+func runCategorize(ctx context.Context, unknownAccount, yearsFlag string) error {
 	if _, err := exec.LookPath("fzf"); err != nil {
-		return fmt.Errorf("fzf not found in PATH — install fzf to use 'categorize'\n  https://github.com/junegunn/fzf")
+		return errors.New("fzf not found in PATH — install fzf to use 'categorize'\n  https://github.com/junegunn/fzf")
 	}
 
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
-	if err := checkHledgerVersion(cfg.HledgerBinary); err != nil {
+	if err := checkHledgerVersion(ctx, cfg.HledgerBinary); err != nil {
 		return err
 	}
 
 	if cfg.FirstYear == 0 || cfg.CurrentYear == 0 {
-		return fmt.Errorf("no years configured or discovered; add CSV files under sources/ first")
+		return errors.New("no years configured or discovered; add CSV files under sources/ first")
 	}
 
 	years := buildCategorizeYearList(cfg, yearsFlag)
 	if len(years) == 0 {
-		return fmt.Errorf("no years to process")
+		return errors.New("no years to process")
 	}
 
 	// Collect hledger accounts for the account picker.
-	accounts, err := collectHledgerAccounts(cfg)
+	accounts, err := collectHledgerAccounts(ctx, cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not list hledger accounts: %v\n", err)
 		accounts = []string{}
@@ -113,7 +114,7 @@ func runCategorize(unknownAccount, yearsFlag string) error {
 
 	for len(allTxns) > 0 {
 		// Step 1: pick a transaction.
-		sel, err := fzfPickTransaction(allTxns)
+		sel, err := fzfPickTransaction(ctx, allTxns)
 		if err != nil {
 			return err
 		}
@@ -127,7 +128,7 @@ func runCategorize(unknownAccount, yearsFlag string) error {
 		}
 
 		// Step 3: refine the matching regexp.
-		pattern, err := fzfRefineRegexp(cfg, sourceDir, sel.description)
+		pattern, err := fzfRefineRegexp(ctx, cfg, sourceDir, sel.description)
 		if err != nil {
 			return err
 		}
@@ -136,7 +137,7 @@ func runCategorize(unknownAccount, yearsFlag string) error {
 		}
 
 		// Step 4: pick the target account.
-		account, err := fzfPickAccount(accounts)
+		account, err := fzfPickAccount(ctx, accounts)
 		if err != nil {
 			return err
 		}
@@ -146,7 +147,7 @@ func runCategorize(unknownAccount, yearsFlag string) error {
 		}
 
 		// Step 5: enter an optional comment.
-		comment, err := fzfPickComment(cfg, sourceDir)
+		comment, err := fzfPickComment(ctx, cfg, sourceDir)
 		if err != nil {
 			return err
 		}
@@ -198,9 +199,10 @@ func buildCategorizeYearList(cfg *config.Config, yearsFlag string) []int {
 
 // collectHledgerAccounts runs "hledger accounts -f all.journal" and returns
 // the account list.
-func collectHledgerAccounts(cfg *config.Config) ([]string, error) {
+func collectHledgerAccounts(ctx context.Context, cfg *config.Config) ([]string, error) {
 	allJournal := filepath.Join(cfg.ProjectRoot, "all.journal")
-	out, err := exec.Command(cfg.HledgerBinary, "accounts", "-f", allJournal).Output()
+	out, err := exec.CommandContext(ctx, cfg.HledgerBinary, "accounts", "-f", allJournal).
+		Output()
 	if err != nil {
 		return nil, err
 	}
@@ -220,11 +222,13 @@ func collectUnknownTxns(cfg *config.Config, journalPath, unknownAccount string) 
 	if _, err := os.Stat(journalPath); err != nil {
 		return nil, fmt.Errorf("file not found: %w", err)
 	}
-	out, err := exec.Command(cfg.HledgerBinary,
-		"-f", journalPath, "register", "-I", "-O", "csv", unknownAccount).Output()
+	out, err := exec.Command(cfg.HledgerBinary, //nolint:noctx // HledgerBinary is trusted; no context needed
+		"-f", journalPath, "register", "-I", "-O", "csv", unknownAccount).
+		Output()
 	if err != nil {
 		// hledger exits 1 when there are no matching postings — treat as empty.
-		if _, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return nil, nil
 		}
 		return nil, err
@@ -232,7 +236,7 @@ func collectUnknownTxns(cfg *config.Config, journalPath, unknownAccount string) 
 	r := csv.NewReader(bytes.NewReader(out))
 	// Skip header row.
 	if _, err := r.Read(); err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil, nil
 		}
 		return nil, err
@@ -240,7 +244,7 @@ func collectUnknownTxns(cfg *config.Config, journalPath, unknownAccount string) 
 	var txns []txn
 	for {
 		rec, err := r.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -329,7 +333,10 @@ func findSourceDir(cfg *config.Config, description string) (string, error) {
 			}
 		}
 	}
-	return "", fmt.Errorf("could not find source for transaction %q (searched raw/ and cleaned/ under all sources)", description)
+	return "", fmt.Errorf(
+		"could not find source for transaction %q (searched raw/ and cleaned/ under all sources)",
+		description,
+	)
 }
 
 // dirContainsString walks dir for *.csv files and returns true if any contains s.
@@ -344,7 +351,7 @@ func dirContainsString(dir, s string) (bool, error) {
 		}
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
-			return nil // skip unreadable files
+			return nil //nolint:nilerr // intentional: skip unreadable files and continue walking
 		}
 		if strings.Contains(string(data), s) {
 			found = true
@@ -352,7 +359,7 @@ func dirContainsString(dir, s string) (bool, error) {
 		}
 		return nil
 	})
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return true, nil
 	}
 	return found, err
@@ -409,7 +416,7 @@ func appendRuleHledger(cfg *config.Config, sourceDir, pattern, account, comment 
 	isNew := false
 	if _, err := os.Stat(autoRulesPath); os.IsNotExist(err) {
 		header := "# auto.rules — generated by hledger-build categorize\n"
-		if err := os.WriteFile(autoRulesPath, []byte(header), 0o644); err != nil {
+		if err := os.WriteFile(autoRulesPath, []byte(header), 0o600); err != nil {
 			return fmt.Errorf("creating auto.rules: %w", err)
 		}
 		isNew = true
@@ -431,7 +438,7 @@ func appendRuleHledger(cfg *config.Config, sourceDir, pattern, account, comment 
 	}
 	fmt.Fprintf(&sb, "if %s\n  account2 %s\n", pattern, account)
 
-	f, err := os.OpenFile(autoRulesPath, os.O_APPEND|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(autoRulesPath, os.O_APPEND|os.O_WRONLY, 0o600)
 	if err != nil {
 		return fmt.Errorf("opening auto.rules for append: %w", err)
 	}
@@ -483,9 +490,9 @@ func collectAutoRulesComments(autoRulesPath string) []string {
 //
 // Exit code 1 (no match) returns the output buffer as-is, which is useful when
 // --print-query is active. Exit code 130 (Ctrl-C) returns an error.
-func fzfRun(args []string, input string) (string, error) {
+func fzfRun(ctx context.Context, args []string, input string) (string, error) {
 	var buf bytes.Buffer
-	cmd := exec.Command("fzf", args...)
+	cmd := exec.CommandContext(ctx, "fzf", args...)
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
@@ -494,12 +501,13 @@ func fzfRun(args []string, input string) (string, error) {
 	output := strings.TrimRight(buf.String(), "\n")
 
 	if runErr != nil {
-		if exitErr, ok := runErr.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
 			switch exitErr.ExitCode() {
 			case 1: // no match — still return whatever fzf wrote (query if --print-query)
 				return output, nil
 			case 130: // SIGINT / Ctrl-C
-				return "", fmt.Errorf("categorize: cancelled by user")
+				return "", errors.New("categorize: cancelled by user")
 			}
 		}
 		return "", runErr
@@ -508,7 +516,7 @@ func fzfRun(args []string, input string) (string, error) {
 }
 
 // fzfPickTransaction presents the list and returns the selected txn.
-func fzfPickTransaction(txns []txn) (txn, error) {
+func fzfPickTransaction(ctx context.Context, txns []txn) (txn, error) {
 	var sb strings.Builder
 	sb.WriteString("DATE\tDESCRIPTION\tAMOUNT\n")
 	for _, t := range txns {
@@ -516,7 +524,7 @@ func fzfPickTransaction(txns []txn) (txn, error) {
 	}
 
 	label := fmt.Sprintf("Resolving Unknowns (%d) — 1/4", len(txns))
-	result, err := fzfRun([]string{
+	result, err := fzfRun(ctx, []string{
 		"--header-lines=1",
 		"--delimiter=\t",
 		"--nth=2",
@@ -527,7 +535,7 @@ func fzfPickTransaction(txns []txn) (txn, error) {
 		return txn{}, err
 	}
 	if result == "" {
-		return txn{}, fmt.Errorf("no transaction selected")
+		return txn{}, errors.New("no transaction selected")
 	}
 	parts := strings.SplitN(result, "\t", 3)
 	if len(parts) < 3 {
@@ -542,7 +550,7 @@ func fzfPickTransaction(txns []txn) (txn, error) {
 
 // fzfRefineRegexp opens fzf in interactive-grep mode over the source's rules
 // files, pre-filled with description, and returns the refined query.
-func fzfRefineRegexp(cfg *config.Config, sourceDir, description string) (string, error) {
+func fzfRefineRegexp(ctx context.Context, cfg *config.Config, sourceDir, description string) (string, error) {
 	absSourceDir := filepath.Join(cfg.ProjectRoot, sourceDir)
 
 	// Collect all .rules files in the source directory.
@@ -556,7 +564,7 @@ func fzfRefineRegexp(cfg *config.Config, sourceDir, description string) (string,
 	sort.Strings(rulesFiles)
 
 	var reloadCmd string
-	if len(rulesFiles) == 0 {
+	if len(rulesFiles) == 0 { //nolint:nestif // OS-specific reload command construction; complexity is inherent
 		if runtime.GOOS == "windows" {
 			reloadCmd = "echo (no rules files found)"
 		} else {
@@ -579,7 +587,7 @@ func fzfRefineRegexp(cfg *config.Config, sourceDir, description string) (string,
 		}
 	}
 
-	result, err := fzfRun([]string{
+	result, err := fzfRun(ctx, []string{
 		"--disabled",
 		"--print-query",
 		"--query=" + description,
@@ -598,12 +606,12 @@ func fzfRefineRegexp(cfg *config.Config, sourceDir, description string) (string,
 
 // fzfPickAccount lets the user pick an existing account or type a new one
 // (prefix with ':' to create a new account).
-func fzfPickAccount(accounts []string) (string, error) {
+func fzfPickAccount(ctx context.Context, accounts []string) (string, error) {
 	sorted := make([]string, len(accounts))
 	copy(sorted, accounts)
 	sort.Strings(sorted)
 
-	result, err := fzfRun([]string{
+	result, err := fzfRun(ctx, []string{
 		"--print-query",
 		"--border-label=Pick account — 3/4",
 		"--header=Select existing or type ':new:account:name' to add",
@@ -612,7 +620,7 @@ func fzfPickAccount(accounts []string) (string, error) {
 		return "", err
 	}
 	if result == "" {
-		return "", fmt.Errorf("no account entered")
+		return "", errors.New("no account entered")
 	}
 	// --print-query: first line = query, second = selection (if any).
 	lines := strings.SplitN(result, "\n", 2)
@@ -624,11 +632,11 @@ func fzfPickAccount(accounts []string) (string, error) {
 
 // fzfPickComment lets the user type an optional comment or reuse an existing one
 // from auto.rules.
-func fzfPickComment(cfg *config.Config, sourceDir string) (string, error) {
+func fzfPickComment(ctx context.Context, cfg *config.Config, sourceDir string) (string, error) {
 	autoRulesPath := filepath.Join(cfg.ProjectRoot, sourceDir, "auto.rules")
 	comments := collectAutoRulesComments(autoRulesPath)
 
-	result, err := fzfRun([]string{
+	result, err := fzfRun(ctx, []string{
 		"--print-query",
 		"--bind=enter:accept-or-print-query",
 		"--border-label=Enter comment (optional) — 4/4",

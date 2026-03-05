@@ -23,9 +23,12 @@ func makePass2Config(dir string, firstYear, currentYear int) *config.Config {
 		Accounts:        config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
 		IncomeStatement: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
 		BalanceSheet:    config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-		Cashflow:        config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-		Unknown:         config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
-		Metrics:         config.MetricsReport{Enabled: true, FireFactor: 25},
+		Cashflow: config.BuiltinReport{
+			Args:    []string{"cashflow", "not:desc:(opening balances)", "--no-elide"},
+			Enabled: true,
+		},
+		Unknown: config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+		Metrics: config.MetricsReport{Enabled: true, FireFactor: 25},
 	}
 	return cfg
 }

@@ -189,11 +189,14 @@ func buildStep(
 	// The input file is always a dependency.
 	deps := []string{inputRel}
 
-	if stage.Script == "hledger" {
+	if stage.Script == "hledger" { //nolint:nestif // hledger vs script path diverge with per-file rules and deps; complexity is inherent
 		cmd = cfg.HledgerBinary
 
 		// Check for a per-file rules override: <sourceDir>/<basename>.csv.rules.
-		base := strings.TrimSuffix(filepath.Base(filepath.FromSlash(inputRel)), filepath.Ext(filepath.FromSlash(inputRel)))
+		base := strings.TrimSuffix(
+			filepath.Base(filepath.FromSlash(inputRel)),
+			filepath.Ext(filepath.FromSlash(inputRel)),
+		)
 		perFileAbs := filepath.Join(absSourceDir, base+".csv.rules")
 		effectiveRules := mainRulesFile
 		if _, err := os.Stat(perFileAbs); err == nil {
@@ -308,7 +311,7 @@ func effectivePipeline(cfg *config.Config, sourceName string) []config.Pipeline 
 // Windows-style scripts are discovered when Script is configured without an
 // extension (e.g. "./preprocess" finds "./preprocess.bat").
 // Returns ("", false) if a local script cannot be found under any tried name.
-func resolveStageScript(script, absSourceDir string) (resolved string, found bool) {
+func resolveStageScript(script, absSourceDir string) (string, bool) {
 	if !isLocalScript(script) {
 		// Bare binary name or "hledger" — assumed available via PATH.
 		return script, true

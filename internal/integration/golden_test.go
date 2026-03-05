@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 )
 
 // update controls whether golden files are regenerated instead of compared.
-// Usage: go test ./internal/integration/... -update
+// Usage: go test ./internal/integration/... -update.
 var update = flag.Bool("update", false, "regenerate golden files in testdata/golden/")
 
 // ── Serialisation ─────────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ func TestGoldenPass2Steps(t *testing.T) {
 	// Create year journals with known includes so GetIncludes returns a full
 	// dependency list that appears in the golden file.
 	for _, year := range []int{2023, 2024} {
-		yearStr := fmt.Sprintf("%d", year)
+		yearStr := strconv.Itoa(year)
 		content := fmt.Sprintf(
 			"include sources/bank1/checking/journal/%s/jan.journal\n"+
 				"include sources/bank2/savings/journal/%s/jan.journal\n",
@@ -143,12 +144,18 @@ func TestGoldenPass2Steps(t *testing.T) {
 			Manual:  "_manual_",
 		},
 		Reports: config.Reports{
-			Transactions:    config.BuiltinReport{Args: []string{"print"}, Enabled: true},
-			Accounts:        config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
-			IncomeStatement: config.BuiltinReport{Args: []string{"is", "--flat", "--no-elide", "--cost"}, Enabled: true},
-			BalanceSheet:    config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
-			Cashflow:        config.BuiltinReport{Args: []string{"cashflow", "not:desc:(opening balances)", "--no-elide"}, Enabled: true},
-			Unknown:         config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+			Transactions: config.BuiltinReport{Args: []string{"print"}, Enabled: true},
+			Accounts:     config.BuiltinReport{Args: []string{"accounts"}, Enabled: true},
+			IncomeStatement: config.BuiltinReport{
+				Args:    []string{"is", "--flat", "--no-elide", "--cost"},
+				Enabled: true,
+			},
+			BalanceSheet: config.BuiltinReport{Args: []string{"balancesheet", "--no-elide"}, Enabled: true},
+			Cashflow: config.BuiltinReport{
+				Args:    []string{"cashflow", "not:desc:(opening balances)", "--no-elide"},
+				Enabled: true,
+			},
+			Unknown: config.BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
 		},
 		Sources: map[string]config.SourceOverride{},
 	}

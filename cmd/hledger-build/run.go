@@ -6,11 +6,10 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/spf13/cobra"
-
 	"github.com/ratoru/hledger-build/internal/manifest"
 	"github.com/ratoru/hledger-build/internal/passes"
 	"github.com/ratoru/hledger-build/internal/runner"
+	"github.com/spf13/cobra"
 )
 
 // passMode selects which build passes to execute.
@@ -60,7 +59,7 @@ func runPipeline(ctx context.Context, mode passMode) error {
 	if err != nil {
 		return err
 	}
-	if err := checkHledgerVersion(cfg.HledgerBinary); err != nil {
+	if err := checkHledgerVersion(ctx, cfg.HledgerBinary); err != nil {
 		return err
 	}
 
@@ -110,7 +109,13 @@ func runPipeline(ctx context.Context, mode passMode) error {
 }
 
 // execPass topologically sorts and executes a set of pre-computed steps.
-func execPass(ctx context.Context, mf *manifest.Manifest, opts runner.RunOpts, label string, steps []runner.Step) error {
+func execPass(
+	ctx context.Context,
+	mf *manifest.Manifest,
+	opts runner.RunOpts,
+	label string,
+	steps []runner.Step,
+) error {
 	tiers, err := runner.TopoSort(steps)
 	if err != nil {
 		return fmt.Errorf("sorting %s steps: %w", label, err)

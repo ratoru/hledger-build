@@ -17,9 +17,8 @@ import (
 	"sync/atomic"
 
 	"github.com/fatih/color"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/ratoru/hledger-build/internal/manifest"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -170,7 +169,7 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 	}
 
 	// Cache check: skip if hash matches AND output file exists on disk.
-	if !opts.Force {
+	if !opts.Force { //nolint:nestif // three-level cache check (force/hash/stat) with verbose variants; complexity is inherent
 		if cached, ok := mf.Get(step.Output); ok && cached == hash {
 			if _, statErr := os.Stat(step.Output); statErr == nil {
 				if opts.Verbose && !opts.Quiet {
@@ -235,7 +234,7 @@ func executeStep(ctx context.Context, step Step, mf *manifest.Manifest, opts Run
 
 	if !opts.Quiet {
 		_, _ = clrSuccess.Printf("✓")
-		fmt.Printf(" %s\n", step.Output)
+		fmt.Fprintf(os.Stdout, " %s\n", step.Output)
 	}
 	return nil
 }

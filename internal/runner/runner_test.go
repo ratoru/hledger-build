@@ -24,7 +24,7 @@ func newManifest() *manifest.Manifest {
 // echoStep builds a Step that runs the platform echo command, capturing
 // stdout into outPath. The content echoed is the text argument.
 // This avoids shell quoting complexity — we call the binary directly with args.
-func echoStep(id, outPath, text string, deps []string) Step {
+func echoStep(id, outPath, text string, deps []string) Step { //nolint:unparam // deps kept for test flexibility
 	// Use Go's own binary as a cross-platform "echo":
 	// `go run` is too heavy; instead rely on the "echo" built-in via sh/cmd.
 	// For portability, detect OS and use appropriate args.

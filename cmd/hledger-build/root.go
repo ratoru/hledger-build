@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,11 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/ratoru/hledger-build/internal/config"
 	"github.com/ratoru/hledger-build/internal/manifest"
 	"github.com/ratoru/hledger-build/internal/runner"
+	"github.com/spf13/cobra"
 )
 
 var version = func() string {
@@ -143,8 +143,8 @@ const (
 
 // checkHledgerVersion runs `binary --version` and returns an error if the
 // reported version is too old.
-func checkHledgerVersion(binary string) error {
-	out, err := exec.Command(binary, "--version").Output()
+func checkHledgerVersion(ctx context.Context, binary string) error {
+	out, err := exec.CommandContext(ctx, binary, "--version").Output()
 	if err != nil {
 		return fmt.Errorf("%q not found or failed to run: %w", binary, err)
 	}
