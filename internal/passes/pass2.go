@@ -144,7 +144,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 			steps = append(steps, runner.Step{
 				ID:            closingOutput,
 				Output:        closingOutput,
-				Deps:          yearDeps,
+				Deps:          reportDeps,
 				Command:       cfg.HledgerBinary,
 				Args:          args,
 				CaptureStdout: true,
