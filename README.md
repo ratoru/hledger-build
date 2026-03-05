@@ -35,13 +35,18 @@ This requires Go 1.26+ and places the binary in `~/go/bin/`. Make sure that dire
 
 ## Quick Start
 
-First, install the latest version of [hledger](https://hledger.org/install.html). Then, run
+First, install the latest version of [hledger](https://hledger.org/install.html). [fzf](https://github.com/junegunn/fzf)
+is also recommended but not required.
+
+Then, run
 
 ```bash
-# scaffold a new project
+# Scaffold a new project
 hledger-build init
- # run the full pipeline
+# Run the full pipeline
 hledger-build
+# Start categorizing transactions
+hledger-build categorize
 ```
 
 After updating `hledger-build`, run `hledger-build --force` to regenerate all files.

@@ -10,13 +10,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
-	"regexp"
-	"runtime"
-	"sort"
-	"strconv"
+	"slices"
 	"strings"
+	"syscall"
+	"time"
 
+	"github.com/fatih/color"
 	"github.com/ratoru/hledger-build/internal/config"
 	"github.com/spf13/cobra"
 )
@@ -28,35 +29,46 @@ type txn struct {
 	amount      string
 }
 
-func newCategorizeCmd() *cobra.Command {
-	var unknownAccount string
-	var yearsFlag string
-
-	cmd := &cobra.Command{
-		Use:   "categorize",
-		Short: "Interactively categorize unknown transactions using fzf",
-		Long: `categorize reads unknown transactions from reports/{year}-unknown.journal
-and guides you through creating hledger classification rules in each source's
-auto.rules file.
-
-Each newly created auto.rules file is automatically included from the source's
-main .rules file via "include auto.rules".
-
-Requires fzf in PATH. Uses ripgrep (rg) when available, falling back to grep.`,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCategorize(cmd.Context(), unknownAccount, yearsFlag)
-		},
-		SilenceUsage: true,
-	}
-
-	cmd.Flags().StringVar(&unknownAccount, "unknown-account", "unknown",
-		"account query pattern for unknown transactions")
-	cmd.Flags().StringVar(&yearsFlag, "years", "",
-		"comma-separated years to process (default: all configured years)")
-	return cmd
+// ifBlock represents a single if-block in a categorization rules file.
+type ifBlock struct {
+	preComments []string // ";" or blank lines immediately before the `if` line
+	matchers    []string // index 0: pattern on `if` line; rest: continuation lines
+	assignments []string // indented lines: "  account2 ...", "  comment  ..."
 }
 
-func runCategorize(ctx context.Context, unknownAccount, yearsFlag string) error {
+func newCategorizeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "categorize",
+		Short: "Interactively categorize expenses:unknown transactions using fzf.",
+		Long: `Interactively categorize expenses:unknown transactions using fzf.
+
+For each round, you will be prompted three times:
+
+  1. Pattern  — type a grep regex that matches one or more raw CSV lines
+               from the transactions you want to categorize (e.g. "amazon",
+               "PAYROLL", "grocery|restaurant"). The preview updates live
+               as you type so you can see which lines match.
+
+  2. Account  — pick the target account from accounts.journal. Type to
+               filter, then press Enter to confirm.
+
+  3. Comment  — optionally attach a comment to the rule. Press Enter to
+               skip.
+
+After each round the rule is written to categorization.rules (which is
+included in main.rules automatically), and the remaining unknown
+transactions are recounted. The loop repeats until none remain.
+
+Requires fzf to be installed and available in PATH.`,
+		RunE:         func(cmd *cobra.Command, args []string) error { return runCategorize(cmd.Context()) },
+		SilenceUsage: true,
+	}
+}
+
+func runCategorize(ctx context.Context) error {
+	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	if _, err := exec.LookPath("fzf"); err != nil {
 		return errors.New("fzf not found in PATH — install fzf to use 'categorize'\n  https://github.com/junegunn/fzf")
 	}
@@ -69,178 +81,254 @@ func runCategorize(ctx context.Context, unknownAccount, yearsFlag string) error 
 		return err
 	}
 
-	if cfg.FirstYear == 0 || cfg.CurrentYear == 0 {
-		return errors.New("no years configured or discovered; add CSV files under sources/ first")
-	}
-
-	years := buildCategorizeYearList(cfg, yearsFlag)
-	if len(years) == 0 {
-		return errors.New("no years to process")
-	}
-
-	// Collect hledger accounts for the account picker.
-	accounts, err := collectHledgerAccounts(ctx, cfg)
+	src, err := selectSource(ctx, cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: could not list hledger accounts: %v\n", err)
+		return err
+	}
+
+	absSourceDir := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources, filepath.FromSlash(src))
+	absMainRules := filepath.Join(absSourceDir, "main.rules")
+	absCleanedDir := filepath.Join(absSourceDir, cfg.Directories.Cleaned)
+
+	accounts, err := loadDeclaredAccounts(cfg.ProjectRoot)
+	if err != nil {
+		_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "warning: could not load accounts.journal: %v\n", err)
 		accounts = []string{}
 	}
 
-	// Collect unknown transactions from all requested years.
-	var allTxns []txn
-	for _, year := range years {
-		journalPath := filepath.Join(cfg.ProjectRoot, cfg.Directories.Reports,
-			fmt.Sprintf("%d-unknown.journal", year))
-		yt, err := collectUnknownTxns(cfg, journalPath, unknownAccount)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %d-unknown.journal: %v\n", year, err)
-			continue
-		}
-		allTxns = append(allTxns, yt...)
-	}
-	allTxns = deduplicateTxns(allTxns)
-
-	// Load existing auto.rules patterns and filter already-handled transactions.
-	patterns, err := loadAllAutoRulesPatterns(cfg)
+	unknownTxns, err := collectSourceUnknownTxns(ctx, cfg, absCleanedDir, absMainRules)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "warning: loading auto.rules patterns: %v\n", err)
+		return err
 	}
-	allTxns = filterByPatterns(allTxns, patterns)
 
-	if len(allTxns) == 0 {
-		fmt.Println("No unknown transactions left!")
+	dateFormat, err := parseDateFormat(absMainRules)
+	if err != nil {
+		return err
+	}
+
+	displayRows, err := findCSVRowsForTxns(unknownTxns, absCleanedDir, dateFormat)
+	if err != nil {
+		return err
+	}
+
+	tmpDir, err := os.MkdirTemp("", "hledger-build-*")
+	if err != nil {
+		return fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	if len(displayRows) == 0 {
+		_, _ = color.New(color.FgGreen).Fprint(os.Stderr, "✓")
+		fmt.Println(" No unknown transactions found — nothing to categorize.")
 		return nil
 	}
-	fmt.Printf("Found %d unknown transaction(s) to categorize.\n", len(allTxns))
 
-	for len(allTxns) > 0 {
-		// Step 1: pick a transaction.
-		sel, err := fzfPickTransaction(ctx, allTxns)
-		if err != nil {
-			return err
-		}
+	categorizationRules := filepath.Join(absSourceDir, "categorization.rules")
 
-		// Step 2: find which source owns this transaction.
-		sourceDir, err := findSourceDir(cfg, sel.description)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %v — skipping transaction\n", err)
-			allTxns = removeTxn(allTxns, sel)
-			continue
-		}
-
-		// Step 3: refine the matching regexp.
-		pattern, err := fzfRefineRegexp(ctx, cfg, sourceDir, sel.description)
-		if err != nil {
-			return err
-		}
-		if strings.TrimSpace(pattern) == "" {
-			pattern = sel.description
-		}
-
-		// Step 4: pick the target account.
-		account, err := fzfPickAccount(ctx, accounts)
-		if err != nil {
-			return err
-		}
-		// A leading ':' signals a new account to add to the in-memory list.
-		if trimmedAccount, found := strings.CutPrefix(account, ":"); found {
-			accounts = append(accounts, trimmedAccount)
-		}
-
-		// Step 5: enter an optional comment.
-		comment, err := fzfPickComment(ctx, cfg, sourceDir)
-		if err != nil {
-			return err
-		}
-		comment = strings.TrimPrefix(comment, ":")
-
-		// Step 6: write the rule to auto.rules.
-		if err := appendRuleHledger(cfg, sourceDir, pattern, account, comment); err != nil {
-			return fmt.Errorf("writing rule: %w", err)
-		}
-
-		// Remove transactions that now match the new pattern.
-		re := compileAutoPattern(pattern)
-		if re != nil {
-			allTxns = filterByPatterns(allTxns, []*regexp.Regexp{re})
-		} else {
-			allTxns = removeTxn(allTxns, sel)
-		}
-		if len(allTxns) == 0 {
-			break
-		}
-		fmt.Printf("Rule saved. %d unknown transaction(s) remaining.\n", len(allTxns))
+	displayFile := filepath.Join(tmpDir, "display.csv")
+	if err := writeLines(displayFile, displayRows); err != nil {
+		return err
 	}
 
-	fmt.Println("No unknown transactions left!")
+	for {
+		plural := "s"
+		if len(displayRows) == 1 {
+			plural = ""
+		}
+		patternHeader := fmt.Sprintf(
+			"%d unknown transaction%s remaining\n%s\nWrite an hledger matcher regex. Example: ama?zo?n",
+			len(displayRows),
+			plural,
+			strings.Repeat("─", 3),
+		)
+
+		grepReload := "reload(grep --color=always -iE -- {q} " + shellEscape(displayFile) + " || echo '(no matches)')"
+
+		result, fzfErr := fzfRun(ctx, []string{
+			"--disabled",
+			"--ansi",
+			"--print-query",
+			"--bind=change:" + grepReload,
+			"--border-label= Type a pattern to match these transactions (grep regex, preview updates live) ",
+			"--header=" + patternHeader,
+		}, strings.Join(displayRows, "\n"))
+		if fzfErr != nil {
+			return fzfErr
+		}
+
+		matcher := strings.TrimSpace(strings.SplitN(result, "\n", 2)[0])
+		if matcher == "" {
+			return errors.New("no matcher entered")
+		}
+		account, err := fzfPickDeclaredAccount(ctx, accounts, matcher)
+		if err != nil {
+			return err
+		}
+
+		comment, err := fzfPickCategorizationComment(ctx, absSourceDir, matcher, account)
+		if err != nil {
+			return err
+		}
+
+		if err := writeCategorizationRule(categorizationRules, matcher, account, comment); err != nil {
+			return fmt.Errorf("writing categorization rule: %w", err)
+		}
+		if err := appendIfAbsent(absMainRules, "include categorization.rules"); err != nil {
+			_, _ = color.New(color.FgYellow).
+				Fprintf(os.Stderr, "warning: could not add 'include categorization.rules': %v\n", err)
+		}
+		_, _ = color.New(color.FgGreen).Fprintln(os.Stderr, "✓ Rule saved. Recounting…")
+
+		count, err := recountUnknowns(ctx, cfg, absCleanedDir, absMainRules)
+		if err != nil {
+			_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "warning: recounting unknowns: %v\n", err)
+		}
+		if count == 0 {
+			break
+		}
+
+		unknownTxns, err = collectSourceUnknownTxns(ctx, cfg, absCleanedDir, absMainRules)
+		if err != nil {
+			return err
+		}
+		displayRows, err = findCSVRowsForTxns(unknownTxns, absCleanedDir, dateFormat)
+		if err != nil {
+			return err
+		}
+		if err := writeLines(displayFile, displayRows); err != nil {
+			return err
+		}
+	}
+
+	_, _ = color.New(color.FgGreen).Fprint(os.Stderr, "✓")
+	fmt.Printf(" All transactions categorized!\n  Rules saved to: %s\n", categorizationRules)
 	return nil
 }
 
-// ── Year helpers ──────────────────────────────────────────────────────────────
+// ── Source selection ───────────────────────────────────────────────────────────
 
-func buildCategorizeYearList(cfg *config.Config, yearsFlag string) []int {
-	if yearsFlag == "" {
-		var years []int
-		for y := cfg.FirstYear; y <= cfg.CurrentYear; y++ {
-			years = append(years, y)
-		}
-		return years
+// selectSource returns the sole discovered source or lets the user pick via fzf.
+func selectSource(ctx context.Context, cfg *config.Config) (string, error) {
+	if len(cfg.DiscoveredSources) == 0 {
+		return "", errors.New("no sources discovered; add CSV files under sources/ first")
 	}
-	var years []int
-	for s := range strings.SplitSeq(yearsFlag, ",") {
-		s = strings.TrimSpace(s)
-		if y, err := strconv.Atoi(s); err == nil && y > 0 {
-			years = append(years, y)
-		}
+	if len(cfg.DiscoveredSources) == 1 {
+		return cfg.DiscoveredSources[0], nil
 	}
-	return years
+	result, err := fzfRun(ctx, []string{
+		"--border-label= Select source ",
+		"--header=Multiple sources found — pick one to categorize",
+	}, strings.Join(cfg.DiscoveredSources, "\n"))
+	if err != nil {
+		return "", err
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return "", errors.New("no source selected")
+	}
+	return result, nil
 }
 
-// ── hledger helpers ───────────────────────────────────────────────────────────
+// ── Account loading ────────────────────────────────────────────────────────────
 
-// collectHledgerAccounts runs "hledger accounts -f all.journal" and returns
-// the account list.
-func collectHledgerAccounts(ctx context.Context, cfg *config.Config) ([]string, error) {
-	allJournal := filepath.Join(cfg.ProjectRoot, "all.journal")
-	out, err := exec.CommandContext(ctx, cfg.HledgerBinary, "accounts", "-f", allJournal).
-		Output()
+// loadDeclaredAccounts reads projectRoot/accounts.journal and returns the
+// account names declared with "account <name>" directives.
+func loadDeclaredAccounts(projectRoot string) ([]string, error) {
+	accountsPath := filepath.Join(projectRoot, "accounts.journal")
+	data, err := os.ReadFile(accountsPath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
 	var accounts []string
-	sc := bufio.NewScanner(bytes.NewReader(out))
+	sc := bufio.NewScanner(bytes.NewReader(data))
 	for sc.Scan() {
-		if line := strings.TrimSpace(sc.Text()); line != "" {
-			accounts = append(accounts, line)
+		line := sc.Text()
+		if i := strings.Index(line, " ;"); i >= 0 {
+			line = line[:i]
+		}
+		line = strings.TrimSpace(line)
+		name, ok := strings.CutPrefix(line, "account ")
+		if !ok {
+			continue
+		}
+		if name = strings.TrimSpace(name); name != "" {
+			accounts = append(accounts, name)
 		}
 	}
 	return accounts, nil
 }
 
-// collectUnknownTxns runs "hledger register -I -O csv" on journalPath filtered
-// by unknownAccount and returns the resulting transactions.
-func collectUnknownTxns(cfg *config.Config, journalPath, unknownAccount string) ([]txn, error) {
-	if _, err := os.Stat(journalPath); err != nil {
-		return nil, fmt.Errorf("file not found: %w", err)
-	}
-	out, err := exec.Command(cfg.HledgerBinary, //nolint:noctx // HledgerBinary is trusted; no context needed
-		"-f", journalPath, "register", "-I", "-O", "csv", unknownAccount).
-		Output()
+// ── Unknown transaction collection ────────────────────────────────────────────
+
+// collectSourceUnknownTxns runs hledger print on every cleaned CSV file with
+// the current main rules and returns deduplicated unknown transactions.
+// Using the cleaned CSV + rules (rather than pre-generated journal files) ensures
+// that newly written categorization rules are reflected immediately.
+func collectSourceUnknownTxns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) ([]txn, error) {
+	csvFiles, err := walkGlob(cleanedDir, "*.csv")
 	if err != nil {
-		// hledger exits 1 when there are no matching postings — treat as empty.
+		return nil, err
+	}
+
+	seen := map[string]struct{}{}
+	var txns []txn
+	for _, f := range csvFiles {
+		ft, runErr := hledgerPrintUnknown(ctx, cfg.HledgerBinary, f, mainRules)
+		if runErr != nil {
+			_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "warning: %s: %v\n", f, runErr)
+			continue
+		}
+		for _, t := range ft {
+			key := t.date + "\x00" + t.description + "\x00" + t.amount
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				txns = append(txns, t)
+			}
+		}
+	}
+	return txns, nil
+}
+
+// hledgerPrintUnknown runs "hledger print expenses:unknown -O csv" on a cleaned
+// CSV file with the given rules file and returns the parsed transactions.
+func hledgerPrintUnknown(ctx context.Context, binary, csvPath, mainRules string) ([]txn, error) {
+	out, err := exec.CommandContext(ctx, binary,
+		"-f", csvPath, "--rules", mainRules, "print", "expenses:unknown", "-O", "csv",
+	).Output()
+	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			return nil, nil
+			return nil, nil // no matches is not an error
 		}
 		return nil, err
 	}
-	r := csv.NewReader(bytes.NewReader(out))
-	// Skip header row.
-	if _, err := r.Read(); err != nil {
+	return parsePrintCSV(out)
+}
+
+// parsePrintCSV parses the CSV output of "hledger print -O csv" and returns
+// the transactions. Column positions are discovered from the header row so the
+// code stays correct if hledger ever reorders its output columns.
+func parsePrintCSV(data []byte) ([]txn, error) {
+	r := csv.NewReader(bytes.NewReader(data))
+	header, err := r.Read()
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil, nil
 		}
 		return nil, err
 	}
+	cols := csvColIndex(header)
+	dateCol, hasDate := cols["date"]
+	descCol, hasDesc := cols["description"]
+	amtCol, hasAmt := cols["amount"]
+	if !hasDate || !hasDesc || !hasAmt {
+		return nil, fmt.Errorf("hledger print CSV missing expected columns (got: %v)", header)
+	}
+	need := max(dateCol, descCol, amtCol) + 1
+
 	var txns []txn
 	for {
 		rec, err := r.Read()
@@ -250,221 +338,352 @@ func collectUnknownTxns(cfg *config.Config, journalPath, unknownAccount string) 
 		if err != nil {
 			return nil, err
 		}
-		// CSV columns: txnidx, date, date2, description, account, amount, total
-		if len(rec) < 7 {
+		if len(rec) < need {
 			continue
 		}
-		txns = append(txns, txn{
-			date:        rec[1],
-			description: rec[3],
-			amount:      rec[5],
-		})
+		txns = append(txns, txn{date: rec[dateCol], description: rec[descCol], amount: rec[amtCol]})
 	}
 	return txns, nil
 }
 
-// ── Transaction filtering ─────────────────────────────────────────────────────
-
-// deduplicateTxns removes transactions with identical (date, description) pairs.
-func deduplicateTxns(txns []txn) []txn {
-	seen := map[string]struct{}{}
-	var result []txn
-	for _, t := range txns {
-		key := t.date + "\x00" + t.description
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		result = append(result, t)
+// csvColIndex returns a map from column name to 0-based index for a CSV header row.
+func csvColIndex(header []string) map[string]int {
+	m := make(map[string]int, len(header))
+	for i, name := range header {
+		m[name] = i
 	}
-	return result
+	return m
 }
 
-// filterByPatterns removes transactions whose description matches any pattern.
-func filterByPatterns(txns []txn, patterns []*regexp.Regexp) []txn {
-	if len(patterns) == 0 {
-		return txns
+// ── Date format helpers ────────────────────────────────────────────────────────
+
+// parseDateFormat reads the main.rules file and extracts the date-format
+// directive. Returns "%Y-%m-%d" if the directive is absent.
+func parseDateFormat(mainRulesPath string) (string, error) {
+	data, err := os.ReadFile(mainRulesPath)
+	if os.IsNotExist(err) {
+		return "%Y-%m-%d", nil
 	}
-	var result []txn
+	if err != nil {
+		return "", err
+	}
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	for sc.Scan() {
+		if fmtStr, ok := strings.CutPrefix(strings.TrimSpace(sc.Text()), "date-format "); ok {
+			return strings.TrimSpace(fmtStr), nil
+		}
+	}
+	return "%Y-%m-%d", nil
+}
+
+// convertDateToFormat converts an ISO date string (2006-01-02) to the given
+// strftime-style format.
+func convertDateToFormat(isoDate, format string) (string, error) {
+	t, err := time.Parse("2006-01-02", isoDate)
+	if err != nil {
+		return "", err
+	}
+	return t.Format(strftimeToGo(format)), nil
+}
+
+// strftimeToGo converts a strftime format string to a Go time layout.
+func strftimeToGo(sfmt string) string {
+	return strings.NewReplacer(
+		"%Y", "2006",
+		"%m", "01",
+		"%d", "02",
+		"%H", "15",
+		"%M", "04",
+		"%S", "05",
+	).Replace(sfmt)
+}
+
+// ── CSV row lookup ─────────────────────────────────────────────────────────────
+
+// findCSVRowsForTxns matches each unknown transaction to a raw CSV line in the
+// cleaned directory and returns the matching lines deduplicated.
+func findCSVRowsForTxns(txns []txn, cleanedDir, dateFormat string) ([]string, error) {
+	csvFiles, err := walkGlob(cleanedDir, "*.csv")
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]struct{}{}
+	var rows []string
 	for _, t := range txns {
-		matched := false
-		for _, re := range patterns {
-			if re.MatchString(t.description) {
-				matched = true
+		csvDate, convErr := convertDateToFormat(t.date, dateFormat)
+		if convErr != nil {
+			continue
+		}
+		for _, f := range csvFiles {
+			line, found, readErr := findCSVLineForTxn(f, csvDate, t.description, t.amount)
+			if readErr != nil || !found {
+				continue
+			}
+			if _, ok := seen[line]; !ok {
+				seen[line] = struct{}{}
+				rows = append(rows, line)
+			}
+			break
+		}
+	}
+	return rows, nil
+}
+
+// findCSVLineForTxn scans a CSV file for a line containing all three values.
+func findCSVLineForTxn(csvPath, date, description, amount string) (string, bool, error) {
+	data, err := os.ReadFile(csvPath)
+	if err != nil {
+		return "", false, err
+	}
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.Contains(line, date) &&
+			strings.Contains(line, description) &&
+			strings.Contains(line, amount) {
+			return line, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// ── categorization.rules parser/writer ────────────────────────────────────────
+
+// parseCategorizationRules parses a categorization.rules file and returns its
+// preamble lines and if-blocks. Returns nil, nil, nil if the file does not exist.
+func parseCategorizationRules(path string) ([]string, []ifBlock, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return nil, nil, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var preamble []string
+	var blocks []ifBlock
+	var pending []string
+	seenIf := false
+	inAssignments := false
+	var cur ifBlock
+
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	for sc.Scan() {
+		line := sc.Text()
+		trimmed := strings.TrimSpace(line)
+		isIndented := len(line) > 0 && (line[0] == ' ' || line[0] == '\t')
+		isBlankorComment := trimmed == "" || strings.HasPrefix(trimmed, ";")
+
+		if trimmed == "if" || strings.HasPrefix(trimmed, "if ") {
+			if seenIf && len(cur.matchers) > 0 {
+				blocks = append(blocks, cur)
+			}
+			seenIf = true
+			inAssignments = false
+			cur = ifBlock{preComments: pending}
+			if pattern, ok := strings.CutPrefix(trimmed, "if "); ok {
+				cur.matchers = []string{pattern}
+			}
+			pending = nil
+			continue
+		}
+
+		if !seenIf {
+			preamble = append(preamble, line)
+			continue
+		}
+
+		if isIndented {
+			cur.assignments = append(cur.assignments, line)
+			inAssignments = true
+			continue
+		}
+
+		if isBlankorComment {
+			pending = append(pending, line)
+			if inAssignments {
+				blocks = append(blocks, cur)
+				cur = ifBlock{}
+				inAssignments = false
+			}
+			continue
+		}
+
+		if !inAssignments {
+			// Continuation matcher line.
+			cur.matchers = append(cur.matchers, trimmed)
+		}
+	}
+
+	if seenIf && len(cur.matchers) > 0 {
+		blocks = append(blocks, cur)
+	}
+	return preamble, blocks, nil
+}
+
+// writeCategorizationRules serialises preamble and blocks back to a rules file.
+func writeCategorizationRules(path string, preamble []string, blocks []ifBlock) error {
+	var sb strings.Builder
+	for _, line := range preamble {
+		sb.WriteString(line)
+		sb.WriteByte('\n')
+	}
+	for i, b := range blocks {
+		if i > 0 && len(b.preComments) == 0 {
+			sb.WriteByte('\n')
+		}
+		for _, line := range b.preComments {
+			sb.WriteString(line)
+			sb.WriteByte('\n')
+		}
+		sb.WriteString("if\n")
+		for _, m := range b.matchers {
+			sb.WriteString(m)
+			sb.WriteByte('\n')
+		}
+		for _, a := range b.assignments {
+			sb.WriteString(a)
+			sb.WriteByte('\n')
+		}
+	}
+	return os.WriteFile(path, []byte(sb.String()), 0o600)
+}
+
+// writeCategorizationRule appends or merges a new rule into the categorization
+// rules file at path. If a block with identical assignments already exists, the
+// matcher is appended to it; otherwise a new block is created.
+func writeCategorizationRule(path, matcher, account, comment string) error {
+	assignments := []string{"  account2 " + account}
+	if comment != "" {
+		assignments = append(assignments, "  comment  "+comment)
+	}
+
+	preamble, blocks, err := parseCategorizationRules(path)
+	if err != nil {
+		return err
+	}
+
+	if preamble == nil && blocks == nil {
+		preamble = []string{"; This file was created by hledger-build. Feel free to edit.", ""}
+	}
+
+	for i, b := range blocks {
+		if slices.Equal(b.assignments, assignments) {
+			blocks[i].matchers = append(blocks[i].matchers, matcher)
+			return writeCategorizationRules(path, preamble, blocks)
+		}
+	}
+
+	blocks = append(blocks, ifBlock{matchers: []string{matcher}, assignments: assignments})
+	return writeCategorizationRules(path, preamble, blocks)
+}
+
+// ── Unknown recount ────────────────────────────────────────────────────────────
+
+// recountUnknowns runs hledger against each cleaned CSV file with the current
+// main rules and returns the number of unique unknown (date, description) pairs.
+func recountUnknowns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) (int, error) {
+	csvFiles, err := walkGlob(cleanedDir, "*.csv")
+	if err != nil {
+		return 0, err
+	}
+
+	seen := map[string]struct{}{}
+	for _, csvFile := range csvFiles {
+		out, runErr := exec.CommandContext(ctx, cfg.HledgerBinary,
+			"-f", csvFile,
+			"--rules", mainRules,
+			"print", "expenses:unknown",
+			"-O", "csv",
+		).Output()
+		if runErr != nil {
+			continue
+		}
+		r := csv.NewReader(bytes.NewReader(out))
+		header, err := r.Read()
+		if err != nil {
+			continue
+		}
+		cols := csvColIndex(header)
+		dateCol, hasDate := cols["date"]
+		descCol, hasDesc := cols["description"]
+		if !hasDate || !hasDesc {
+			continue
+		}
+		need := max(dateCol, descCol) + 1
+		for {
+			rec, err := r.Read()
+			if errors.Is(err, io.EOF) {
 				break
 			}
-		}
-		if !matched {
-			result = append(result, t)
-		}
-	}
-	return result
-}
-
-// removeTxn removes the first txn equal to target.
-func removeTxn(txns []txn, target txn) []txn {
-	var result []txn
-	for _, t := range txns {
-		if t.date != target.date || t.description != target.description || t.amount != target.amount {
-			result = append(result, t)
-		}
-	}
-	return result
-}
-
-// ── Source lookup ─────────────────────────────────────────────────────────────
-
-// findSourceDir returns the relative path (e.g. "sources/mybank/checking") for
-// the source whose raw or cleaned CSV files contain description.
-func findSourceDir(cfg *config.Config, description string) (string, error) {
-	sourcesDir := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources)
-	for _, src := range cfg.DiscoveredSources {
-		for _, subdir := range []string{cfg.Directories.Raw, cfg.Directories.Cleaned} {
-			searchDir := filepath.Join(sourcesDir, src, subdir)
-			if _, err := os.Stat(searchDir); err != nil {
+			if err != nil || len(rec) < need {
 				continue
 			}
-			found, err := dirContainsString(searchDir, description)
-			if err != nil {
-				continue
-			}
-			if found {
-				return filepath.Join(cfg.Directories.Sources, filepath.FromSlash(src)), nil
-			}
+			seen[rec[dateCol]+"\x00"+rec[descCol]] = struct{}{} // date + description
 		}
 	}
-	return "", fmt.Errorf(
-		"could not find source for transaction %q (searched raw/ and cleaned/ under all sources)",
-		description,
-	)
+	return len(seen), nil
 }
 
-// dirContainsString walks dir for *.csv files and returns true if any contains s.
-func dirContainsString(dir, s string) (bool, error) {
-	found := false
-	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+// ── fzf pickers ───────────────────────────────────────────────────────────────
+
+// fzfPickDeclaredAccount presents accounts from accounts.journal and returns the
+// user's selection. It re-prompts if the typed query is not a known account.
+func fzfPickDeclaredAccount(ctx context.Context, accounts []string, matcher string) (string, error) {
+	input := strings.Join(accounts, "\n")
+	header := "Matched pattern: " + matcher + "\n" +
+		strings.Repeat("─", 3) + "\n" +
+		"Select an account from accounts.journal (type to filter)"
+	for {
+		result, err := fzfRun(ctx, []string{
+			"--print-query",
+			"--border-label= Pick target account ",
+			"--header=" + header,
+		}, input)
 		if err != nil {
-			return err
+			return "", err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".csv") {
-			return nil
+		lines := strings.SplitN(result, "\n", 2)
+		query := strings.TrimSpace(lines[0])
+		if len(lines) >= 2 && strings.TrimSpace(lines[1]) != "" {
+			return strings.TrimSpace(lines[1]), nil
 		}
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			return nil //nolint:nilerr // intentional: skip unreadable files and continue walking
+		if slices.Contains(accounts, query) {
+			return query, nil
 		}
-		if strings.Contains(string(data), s) {
-			found = true
-			return io.EOF // sentinel: stop walking early
-		}
-		return nil
-	})
-	if errors.Is(err, io.EOF) {
-		return true, nil
+		_, _ = color.New(color.FgYellow).
+			Fprintf(os.Stderr, "Account %q not found in accounts.journal; add it there first, then retry.\n", query)
 	}
-	return found, err
 }
 
-// ── auto.rules pattern loading ────────────────────────────────────────────────
-
-// loadAllAutoRulesPatterns reads every source's auto.rules and returns a
-// compiled regexp for each "if PATTERN" line.
-func loadAllAutoRulesPatterns(cfg *config.Config) ([]*regexp.Regexp, error) {
-	var patterns []*regexp.Regexp
-	for _, src := range cfg.DiscoveredSources {
-		autoRulesPath := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources, src, "auto.rules")
-		data, err := os.ReadFile(autoRulesPath)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		sc := bufio.NewScanner(bytes.NewReader(data))
-		for sc.Scan() {
-			line := strings.TrimSpace(sc.Text())
-			if after, ok := strings.CutPrefix(line, "if "); ok {
-				re := compileAutoPattern(after)
-				if re != nil {
-					patterns = append(patterns, re)
-				}
-			}
-		}
-	}
-	return patterns, nil
-}
-
-// compileAutoPattern compiles a case-insensitive regexp for an "if" pattern.
-// Returns nil if the pattern is not a valid regexp.
-func compileAutoPattern(pattern string) *regexp.Regexp {
-	re, err := regexp.Compile("(?i)" + pattern)
+// fzfPickCategorizationComment presents existing comments for reuse and lets the
+// user type a new one. Returns an empty string if no comment is desired.
+func fzfPickCategorizationComment(ctx context.Context, absSourceDir, matcher, account string) (string, error) {
+	comments := collectCategorizationComments(filepath.Join(absSourceDir, "categorization.rules"))
+	header := "Matched pattern: " + matcher + "  →  Account: " + account + "\n" +
+		strings.Repeat("─", 3) + "\n" +
+		"Select an existing comment, type a new one, or press Enter to skip"
+	result, err := fzfRun(ctx, []string{
+		"--print-query",
+		"--bind=enter:accept-or-print-query",
+		"--border-label= Add comment (optional) ",
+		"--header=" + header,
+	}, strings.Join(comments, "\n"))
 	if err != nil {
-		return nil
+		return "", err
 	}
-	return re
+	lines := strings.SplitN(result, "\n", 2)
+	if len(lines) >= 2 && strings.TrimSpace(lines[1]) != "" {
+		return strings.TrimSpace(lines[1]), nil
+	}
+	return strings.TrimSpace(lines[0]), nil
 }
 
-// ── auto.rules writer ─────────────────────────────────────────────────────────
-
-// appendRuleHledger creates auto.rules if absent, ensures it is included from
-// the source's primary .rules file, then appends the new rule block.
-func appendRuleHledger(cfg *config.Config, sourceDir, pattern, account, comment string) error {
-	absSourceDir := filepath.Join(cfg.ProjectRoot, sourceDir)
-	autoRulesPath := filepath.Join(absSourceDir, "auto.rules")
-
-	// Create auto.rules on first use.
-	isNew := false
-	if _, err := os.Stat(autoRulesPath); os.IsNotExist(err) {
-		header := "# auto.rules — generated by hledger-build categorize\n"
-		if err := os.WriteFile(autoRulesPath, []byte(header), 0o600); err != nil {
-			return fmt.Errorf("creating auto.rules: %w", err)
-		}
-		isNew = true
-	}
-
-	// On first creation, wire "include auto.rules" into the primary rules file.
-	if isNew {
-		if err := addAutoRulesInclude(absSourceDir); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: could not add 'include auto.rules': %v\n", err)
-		}
-	}
-
-	// Build rule block.
-	var sb strings.Builder
-	if comment != "" {
-		fmt.Fprintf(&sb, "\n; %s\n", comment)
-	} else {
-		sb.WriteString("\n")
-	}
-	fmt.Fprintf(&sb, "if %s\n  account2 %s\n", pattern, account)
-
-	f, err := os.OpenFile(autoRulesPath, os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
-		return fmt.Errorf("opening auto.rules for append: %w", err)
-	}
-	defer func() {
-		if cerr := f.Close(); cerr != nil && err == nil {
-			err = cerr
-		}
-	}()
-	_, err = f.WriteString(sb.String())
-	return err
-}
-
-// addAutoRulesInclude appends "include auto.rules" to main.rules in sourceDir,
-// unless already present. Returns an error if main.rules does not exist.
-func addAutoRulesInclude(sourceDir string) error {
-	mainRules := filepath.Join(sourceDir, "main.rules")
-	if _, err := os.Stat(mainRules); err != nil {
-		return fmt.Errorf("main.rules not found in %s: add 'include auto.rules' manually", sourceDir)
-	}
-	return appendIfAbsent(mainRules, "include auto.rules")
-}
-
-// collectAutoRulesComments returns unique comment strings found in auto.rules.
-// It treats any line starting with "; " as a comment.
-func collectAutoRulesComments(autoRulesPath string) []string {
-	data, err := os.ReadFile(autoRulesPath)
+// collectCategorizationComments returns unique non-internal comment values from
+// a categorization.rules file.
+func collectCategorizationComments(path string) []string {
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
@@ -473,17 +692,23 @@ func collectAutoRulesComments(autoRulesPath string) []string {
 	sc := bufio.NewScanner(bytes.NewReader(data))
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
-		if after, ok := strings.CutPrefix(line, "; "); ok && after != "" {
-			if _, dup := seen[after]; !dup {
-				seen[after] = struct{}{}
-				comments = append(comments, after)
-			}
+		after, ok := strings.CutPrefix(line, "comment")
+		if !ok {
+			continue
+		}
+		val := strings.TrimSpace(after)
+		if val == "" || strings.HasPrefix(val, "__HLB_") {
+			continue
+		}
+		if _, dup := seen[val]; !dup {
+			seen[val] = struct{}{}
+			comments = append(comments, val)
 		}
 	}
 	return comments
 }
 
-// ── fzf helpers ───────────────────────────────────────────────────────────────
+// ── fzf runner ────────────────────────────────────────────────────────────────
 
 // fzfRun runs fzf with the given args, piping input to its stdin, and returns
 // the trimmed stdout.
@@ -515,142 +740,37 @@ func fzfRun(ctx context.Context, args []string, input string) (string, error) {
 	return output, nil
 }
 
-// fzfPickTransaction presents the list and returns the selected txn.
-func fzfPickTransaction(ctx context.Context, txns []txn) (txn, error) {
-	var sb strings.Builder
-	sb.WriteString("DATE\tDESCRIPTION\tAMOUNT\n")
-	for _, t := range txns {
-		fmt.Fprintf(&sb, "%s\t%s\t%s\n", t.date, t.description, t.amount)
-	}
+// ── Filesystem helpers ─────────────────────────────────────────────────────────
 
-	label := fmt.Sprintf("Resolving Unknowns (%d) — 1/4", len(txns))
-	result, err := fzfRun(ctx, []string{
-		"--header-lines=1",
-		"--delimiter=\t",
-		"--nth=2",
-		"--tac",
-		"--border-label=" + label,
-	}, sb.String())
-	if err != nil {
-		return txn{}, err
+// walkGlob returns all files under dir whose base name matches pattern.
+// Returns nil, nil if dir does not exist.
+func walkGlob(dir, pattern string) ([]string, error) {
+	var matches []string
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		matched, matchErr := filepath.Match(pattern, filepath.Base(path))
+		if matchErr != nil {
+			return matchErr
+		}
+		if matched {
+			matches = append(matches, path)
+		}
+		return nil
+	})
+	if os.IsNotExist(err) {
+		return nil, nil
 	}
-	if result == "" {
-		return txn{}, errors.New("no transaction selected")
-	}
-	parts := strings.SplitN(result, "\t", 3)
-	if len(parts) < 3 {
-		return txn{}, fmt.Errorf("unexpected fzf output: %q", result)
-	}
-	return txn{
-		date:        strings.TrimSpace(parts[0]),
-		description: strings.TrimSpace(parts[1]),
-		amount:      strings.TrimSpace(parts[2]),
-	}, nil
+	return matches, err
 }
 
-// fzfRefineRegexp opens fzf in interactive-grep mode over the source's rules
-// files, pre-filled with description, and returns the refined query.
-func fzfRefineRegexp(ctx context.Context, cfg *config.Config, sourceDir, description string) (string, error) {
-	absSourceDir := filepath.Join(cfg.ProjectRoot, sourceDir)
-
-	// Collect all .rules files in the source directory.
-	entries, _ := os.ReadDir(absSourceDir)
-	var rulesFiles []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".rules") {
-			rulesFiles = append(rulesFiles, shellEscape(filepath.Join(absSourceDir, e.Name())))
-		}
-	}
-	sort.Strings(rulesFiles)
-
-	var reloadCmd string
-	if len(rulesFiles) == 0 { //nolint:nestif // OS-specific reload command construction; complexity is inherent
-		if runtime.GOOS == "windows" {
-			reloadCmd = "echo (no rules files found)"
-		} else {
-			reloadCmd = "echo '(no rules files found)'"
-		}
-	} else {
-		filesStr := strings.Join(rulesFiles, " ")
-		var nullDev, orTrue string
-		if runtime.GOOS == "windows" {
-			nullDev = "2>nul"
-			orTrue = "|| echo."
-		} else {
-			nullDev = "2>/dev/null"
-			orTrue = "|| true"
-		}
-		if _, err := exec.LookPath("rg"); err == nil {
-			reloadCmd = fmt.Sprintf("rg -n -- {q} %s %s %s", filesStr, nullDev, orTrue)
-		} else {
-			reloadCmd = fmt.Sprintf("grep -n -- {q} %s %s %s", filesStr, nullDev, orTrue)
-		}
-	}
-
-	result, err := fzfRun(ctx, []string{
-		"--disabled",
-		"--print-query",
-		"--query=" + description,
-		"--bind=start:reload:" + reloadCmd,
-		"--bind=change:reload:" + reloadCmd,
-		"--border-label=Refine regexp (matches shown from rules files) — 2/4",
-		"--header=Edit regexp above; Enter to confirm",
-	}, "")
-	if err != nil {
-		return "", err
-	}
-	// --print-query always outputs the query as the first line.
-	lines := strings.SplitN(result, "\n", 2)
-	return strings.TrimSpace(lines[0]), nil
-}
-
-// fzfPickAccount lets the user pick an existing account or type a new one
-// (prefix with ':' to create a new account).
-func fzfPickAccount(ctx context.Context, accounts []string) (string, error) {
-	sorted := make([]string, len(accounts))
-	copy(sorted, accounts)
-	sort.Strings(sorted)
-
-	result, err := fzfRun(ctx, []string{
-		"--print-query",
-		"--border-label=Pick account — 3/4",
-		"--header=Select existing or type ':new:account:name' to add",
-	}, strings.Join(sorted, "\n"))
-	if err != nil {
-		return "", err
-	}
-	if result == "" {
-		return "", errors.New("no account entered")
-	}
-	// --print-query: first line = query, second = selection (if any).
-	lines := strings.SplitN(result, "\n", 2)
-	if len(lines) >= 2 && strings.TrimSpace(lines[1]) != "" {
-		return strings.TrimSpace(lines[1]), nil
-	}
-	return strings.TrimSpace(lines[0]), nil
-}
-
-// fzfPickComment lets the user type an optional comment or reuse an existing one
-// from auto.rules.
-func fzfPickComment(ctx context.Context, cfg *config.Config, sourceDir string) (string, error) {
-	autoRulesPath := filepath.Join(cfg.ProjectRoot, sourceDir, "auto.rules")
-	comments := collectAutoRulesComments(autoRulesPath)
-
-	result, err := fzfRun(ctx, []string{
-		"--print-query",
-		"--bind=enter:accept-or-print-query",
-		"--border-label=Enter comment (optional) — 4/4",
-		"--header=Type a comment or press Enter to skip",
-	}, strings.Join(comments, "\n"))
-	if err != nil {
-		return "", err
-	}
-	// --print-query: first line = query, second = selection (if any).
-	lines := strings.SplitN(result, "\n", 2)
-	if len(lines) >= 2 && strings.TrimSpace(lines[1]) != "" {
-		return strings.TrimSpace(lines[1]), nil
-	}
-	return strings.TrimSpace(lines[0]), nil
+// writeLines writes lines joined by newlines to path, creating or truncating it.
+func writeLines(path string, lines []string) error {
+	return os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0o600)
 }
 
 // shellEscape wraps s in single quotes, escaping embedded single quotes.
