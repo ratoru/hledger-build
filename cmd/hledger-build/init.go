@@ -95,7 +95,7 @@ const accountsJournal = `; accounts.journal – account declarations.
 ;
 ; Adjust account names to match your setup and add subaccounts as needed.
 
-; ── Account types ────────────────────────────────────────────────────────────
+; -- Account types ------------------------------------------------------------
 
 account assets             ; type: A
 account liabilities        ; type: L
@@ -103,31 +103,93 @@ account equity             ; type: E
 account revenue            ; type: R
 account expenses           ; type: X
 
-; ── Subtypes ─────────────────────────────────────────────────────────────────
+; -- Subtypes -----------------------------------------------------------------
 
 ; Cash: liquid assets used by the cashflow report
-account assets:cash        ; type: C
-account assets:mybank      ; type: C
+account assets:cash                 ; type: C
+account assets:cash:venmo
+account assets:cash:wallet
 
-; Conversion: equity accounts used for commodity conversions
-account equity:conversion  ; type: V
+account assets:bank:checking        ; type: C
+account assets:bank:checking:bank
 
-; ── Common subaccounts (adjust or extend to match your chart of accounts) ────
+; Money owed to me
+account assets:receivables
+account assets:investments:taxable:fidelity
+account assets:investments:retirement:401k
 
-account assets:mybank:checking
-account assets:mybank:savings
+account liabilities:credit-cards:chase
+; Money you owe others
+account liabilities:payables
 
-account liabilities:creditcard
+account equity:opening/closing balances
+account equity:adjustments
 
-account equity:opening balances
+account revenue:salary:company
+account revenue:investments:dividends
+account revenue:investments:capital-gains
+account revenue:gifts
+account revenue:rewards
 
-account revenue:salary
-account revenue:interest
-
-account expenses:food
-account expenses:food:groceries
-account expenses:subscriptions
+; -- EXPENSES --
+; Use a tag for subscriptions
 account expenses:unknown
+account expenses:misc
+
+; --- Housing & Utilities ---
+account expenses:housing:rent
+account expenses:housing:maintenance
+account expenses:housing:utilities:electricity
+account expenses:housing:utilities:gas
+account expenses:housing:utilities:water
+account expenses:housing:utilities:internet
+
+; --- Food & Consumables ---
+account expenses:food:groceries
+account expenses:food:dining:restaurants
+account expenses:food:dining:takeout
+
+; --- Transportation ---
+account expenses:transportation:car
+account expenses:transportation:public
+account expenses:transportation:rideshare
+account expenses:transportation:other
+
+; --- Health & Protection ---
+account expenses:health
+account expenses:insurance:health
+account expenses:insurance:renters
+
+; --- Discretionary & Lifestyle ---
+account expenses:personal:clothing:everyday
+; Suits, heavy winter gear, running shoes
+account expenses:personal:clothing:specialty
+; Haircuts, toiletries
+account expenses:personal:grooming
+account expenses:personal:tech
+account expenses:personal:gifts
+
+account expenses:entertainment:hobbies
+account expenses:entertainment:events
+account expenses:entertainment:nightlife
+
+account expenses:work
+
+; --- Travel (The Sandbox) ---
+; Keeps vacation spending from ruining your daily food/transit averages.
+; Use tags like trip:2026-hawaii on the transactions instead of making an account for the trip
+account expenses:travel:transit:flights
+; Ubers/trains while on vacation
+account expenses:travel:transit:local
+account expenses:travel:lodging
+account expenses:travel:food
+account expenses:travel:experiences
+
+; --- Taxes, Fees & Obligations ---
+account expenses:taxes:us:income:federal
+account expenses:taxes:us:income:state
+account expenses:fees:financial:bank
+account expenses:fees:financial:credit-card
 `
 
 // commoditiesJournal is the content of commodities.journal written at the project root.
@@ -182,22 +244,22 @@ currency1 USD
 
 # ── Classification rules ──────────────────────────────────────────────────────
 # Rules are applied top-to-bottom; later matches override earlier ones.
-# Each pattern is a case-insensitive regex matched against the whole CSV record
-# (all columns joined). Use %FIELDNAME to restrict to a specific column, e.g.
-#   if %description ^PAYROLL
-#     account2 revenue:salary
+# Each pattern is a case-insensitive regex (POSIX extended regular expression
+# that also supports GNU word boundaries (\b, \B, \<, \>) and nothing else)
+# matched against the whole CSV record (all columns joined).
+# Use %FIELDNAME to restrict to a specific column, e.g.
+#   if %description ^spotify
+#     account2 expenses:entertainment
+#     comment  subscription:
 
 if PAYROLL
   account2 revenue:salary
 
-if GROCERY
+if 
+safeway
+walmart
+target
   account2 expenses:food:groceries
-
-# Add more rules as you encounter new payees, for example:
-# if NETFLIX|SPOTIFY
-#   account2 expenses:subscriptions
-# if ATM|CASH WITHDRAWAL
-#   account2 expenses:cash
 `
 
 // examplePreprocess is the shell script written to sources/mybank/checking/preprocess.
@@ -372,9 +434,9 @@ func openingJournalContent(year int) string {
 			"; or plain amounts if you prefer not to assert.\n"+
 			"\n"+
 			"%d-01-01 opening balances\n"+
-			"    assets:mybank:checking         = USD 1000.00\n"+
-			"    assets:cash                    =  USD 200.00\n"+
-			"    equity:opening balances\n",
+			"    assets:mybank:checking           = USD 1000.00\n"+
+			"    assets:cash                      =  USD 200.00\n"+
+			"    equity:opening/closing balances\n",
 		year, year,
 	)
 }
