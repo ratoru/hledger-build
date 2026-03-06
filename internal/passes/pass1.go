@@ -208,7 +208,13 @@ func buildStep(
 			deps = append(deps, effectiveRules)
 		}
 
-		args = buildHledgerArgs(inputRel, effectiveRules)
+		commoditiesFile := "commodities.journal"
+		if _, err := os.Stat(filepath.Join(cfg.ProjectRoot, commoditiesFile)); err != nil {
+			commoditiesFile = ""
+		} else {
+			deps = append(deps, commoditiesFile)
+		}
+		args = buildHledgerArgs(inputRel, effectiveRules, commoditiesFile)
 		cwd = "" // run from project root (inherits process working directory)
 		// All main.rules files are deps so any change triggers a rebuild.
 		deps = append(deps, allRulesFiles...)
@@ -244,9 +250,16 @@ func buildStep(
 }
 
 // buildHledgerArgs constructs the hledger arguments for CSV→journal conversion
-// via `hledger -f <input> [--rules r] print`.
-func buildHledgerArgs(inputRel string, rulesFile string) []string {
-	args := []string{"-f", inputRel}
+// via `hledger [-f <commodities>] -f <input> [--rules r] print`.
+// commoditiesFile, when non-empty, is prepended as a leading -f so that
+// commodity format declarations (e.g. decimal separators) are applied when
+// formatting the output journal.
+func buildHledgerArgs(inputRel string, rulesFile string, commoditiesFile string) []string {
+	var args []string
+	if commoditiesFile != "" {
+		args = append(args, "-f", commoditiesFile)
+	}
+	args = append(args, "-f", inputRel)
 	if rulesFile != "" {
 		args = append(args, "--rules", rulesFile)
 	}

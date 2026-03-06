@@ -432,7 +432,7 @@ func TestRequiredScriptMissing(t *testing.T) {
 // TestHledgerArgsOrder verifies the canonical order of hledger arguments.
 func TestHledgerArgsOrder(t *testing.T) {
 	rulesFile := "sources/bank/main.rules"
-	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", rulesFile)
+	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", rulesFile, "")
 
 	// Expected: -f <input> --rules <file> print
 	if len(args) != 5 {
@@ -457,7 +457,7 @@ func TestHledgerArgsOrder(t *testing.T) {
 
 // TestHledgerArgsNoRules verifies that no --rules flag is added when rulesFile is empty.
 func TestHledgerArgsNoRules(t *testing.T) {
-	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", "")
+	args := buildHledgerArgs("sources/bank/raw/2024/stmt.csv", "", "")
 
 	// Expected: -f <input> print
 	if len(args) != 3 {
