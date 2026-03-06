@@ -88,7 +88,13 @@ func runCategorize(ctx context.Context) error {
 
 	absSourceDir := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources, filepath.FromSlash(src))
 	absMainRules := filepath.Join(absSourceDir, "main.rules")
+
+	// The pipeline may skip the preprocess stage (it's optional) and convert raw/ CSVs directly.
+	// In that case cleanned/ is empty.
 	absCleanedDir := filepath.Join(absSourceDir, cfg.Directories.Cleaned)
+	if files, _ := walkGlob(absCleanedDir); len(files) == 0 {
+		absCleanedDir = filepath.Join(absSourceDir, cfg.Directories.Raw)
+	}
 
 	accounts, err := loadDeclaredAccounts(cfg.ProjectRoot)
 	if err != nil {
@@ -269,7 +275,7 @@ func loadDeclaredAccounts(projectRoot string) ([]string, error) {
 // Using the cleaned CSV + rules (rather than pre-generated journal files) ensures
 // that newly written categorization rules are reflected immediately.
 func collectSourceUnknownTxns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) ([]txn, error) {
-	csvFiles, err := walkGlob(cleanedDir, "*.csv")
+	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return nil, err
 	}
@@ -390,12 +396,24 @@ func convertDateToFormat(isoDate, format string) (string, error) {
 // strftimeToGo converts a strftime format string to a Go time layout.
 func strftimeToGo(sfmt string) string {
 	return strings.NewReplacer(
+		"%-m", "1", // month, no leading zero
+		"%-d", "2", // day, no leading zero
+		"%-H", "15", // hour (24h), no leading zero - Go doesn't distinguish
+		"%-M", "4", // minute, no leading zero
+		"%-S", "5", // hour, no leading zero
 		"%Y", "2006",
+		"%y", "06",
 		"%m", "01",
 		"%d", "02",
+		"%b", "Jan", // abbreviated month name
+		"%h", "Jan", // same as %b in Haskell time
+		"%B", "January",
 		"%H", "15",
+		"%I", "03", // hour (12h), with leading zero
+		"%l", "3", // hour (12h), no leading zero
 		"%M", "04",
 		"%S", "05",
+		"%p", "PM",
 	).Replace(sfmt)
 }
 
@@ -404,7 +422,7 @@ func strftimeToGo(sfmt string) string {
 // findCSVRowsForTxns matches each unknown transaction to a raw CSV line in the
 // cleaned directory and returns the matching lines deduplicated.
 func findCSVRowsForTxns(txns []txn, cleanedDir, dateFormat string) ([]string, error) {
-	csvFiles, err := walkGlob(cleanedDir, "*.csv")
+	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +603,7 @@ func writeCategorizationRule(path, matcher, account, comment string) error {
 // recountUnknowns runs hledger against each cleaned CSV file with the current
 // main rules and returns the number of unique unknown (date, description) pairs.
 func recountUnknowns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) (int, error) {
-	csvFiles, err := walkGlob(cleanedDir, "*.csv")
+	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return 0, err
 	}
@@ -793,7 +811,7 @@ func fzfRun(ctx context.Context, args []string, input string, env ...string) (st
 
 // walkGlob returns all files under dir whose base name matches pattern.
 // Returns nil, nil if dir does not exist.
-func walkGlob(dir, pattern string) ([]string, error) {
+func walkGlob(dir string) ([]string, error) {
 	var matches []string
 	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -802,7 +820,7 @@ func walkGlob(dir, pattern string) ([]string, error) {
 		if d.IsDir() {
 			return nil
 		}
-		matched, matchErr := filepath.Match(pattern, filepath.Base(path))
+		matched, matchErr := filepath.Match("*.csv", filepath.Base(path))
 		if matchErr != nil {
 			return matchErr
 		}
