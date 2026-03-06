@@ -176,7 +176,7 @@ func runCategorize(ctx context.Context) error {
 				Fprintf(os.Stderr, "warning: could not add 'include categorization.rules': %v\n", err)
 		}
 		_, _ = color.New(color.FgGreen).Fprint(os.Stderr, "✓")
-		fmt.Printf(" Rule saved. Recounting...")
+		fmt.Println(" Rule saved. Recounting...")
 
 		count, err := recountUnknowns(ctx, cfg, absCleanedDir, absMainRules)
 		if err != nil {
@@ -667,17 +667,25 @@ func fzfPickDeclaredAccount(ctx context.Context, accounts []string, matcher stri
 // user type a new one. Returns an empty string if no comment is desired.
 func fzfPickCategorizationComment(ctx context.Context, absSourceDir, matcher, account string) (string, error) {
 	comments := collectCategorizationComments(filepath.Join(absSourceDir, "categorization.rules"))
-	header := "Select an existing comment, type a new one, or press Enter to skip."
+	header := "Select an existing comment, type a new one, or Alt+Enter to skip."
+	baseRule := `printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" "$HLB_ACCOUNT"`
+	// {} = focused item (single-quoted by fzf); {q} = current query (single-quoted by fzf).
+	// Prefer the focused item; fall back to the typed query; show nothing if both empty.
+	// Do NOT wrap {} or {q} in extra quotes — fzf already single-quotes them, so "{}"->"'val'"
+	// which makes the shell print literal apostrophes.
+	previewCmd := baseRule + `; C={}; [ -n "$C" ] || C={q}; [ -n "$C" ] && printf '  comment  %s\n' "$C"`
 	result, err := fzfRun(ctx, []string{
 		"--print-query",
 		"--bind=enter:accept-or-print-query",
+		"--bind=alt-enter:print-query",
 		"--border-label= Add comment (optional) ",
 		"--input-label= Comment ",
 		"--list-label= Existing comments ",
 		"--header=" + header,
-		"--ghost=press Enter to skip",
-		`--preview=printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" "$HLB_ACCOUNT"; [ -n "{}" ] && printf '  comment  %s\n' "{}"`,
-		`--bind=change:preview(printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" "$HLB_ACCOUNT"; [ -n "$FZF_QUERY" ] && printf '  comment  %s\n' "$FZF_QUERY")`,
+		"--ghost=Alt+Enter to skip",
+		"--preview=" + previewCmd,
+		"--bind=start:refresh-preview",
+		"--bind=change:refresh-preview",
 		"--preview-window=bottom:6:wrap",
 		"--preview-label= Rule preview ",
 		"--preview-label-pos=4",
