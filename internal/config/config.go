@@ -108,6 +108,7 @@ type Config struct {
 	CurrentYear   int    `mapstructure:"current_year"`
 	HledgerBinary string `mapstructure:"hledger_binary"`
 	EquityQuery   string `mapstructure:"equity_query"`
+	CheckQuery    string `mapstructure:"check_query"`
 	Jobs          int    `mapstructure:"jobs"`
 
 	// CLI-only flags (not stored in config file)
