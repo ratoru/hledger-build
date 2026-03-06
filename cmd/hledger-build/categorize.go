@@ -131,26 +131,24 @@ func runCategorize(ctx context.Context) error {
 	}
 
 	for {
-		plural := "s"
-		if len(displayRows) == 1 {
-			plural = ""
-		}
-		patternHeader := fmt.Sprintf(
-			"%d unknown transaction%s remaining\n%s\nWrite an hledger matcher regex. Example: ama?zo?n",
-			len(displayRows),
-			plural,
-			strings.Repeat("─", 3),
-		)
+		patternHeader := "Write an hledger matcher regex. Example: ama?zo?n"
 
 		grepReload := "reload(grep --color=always -iE -- {q} " + shellEscape(displayFile) + " || echo '(no matches)')"
+		listLabelBind := fmt.Sprintf(
+			"result:transform-list-label:if [[ -z $FZF_QUERY ]]; then echo ' CSV Transactions (%d) '; else echo \" $FZF_MATCH_COUNT matches \"; fi",
+			len(displayRows),
+		)
 
 		result, fzfErr := fzfRun(ctx, []string{
 			"--disabled",
 			"--ansi",
 			"--print-query",
 			"--bind=change:" + grepReload,
-			"--border-label= Type a pattern to match these transactions (grep regex, preview updates live) ",
+			"--bind=" + listLabelBind,
+			"--border-label= Categorize transactions ",
+			"--input-label= regex ",
 			"--header=" + patternHeader,
+			"--ghost=h?ledger",
 		}, strings.Join(displayRows, "\n"))
 		if fzfErr != nil {
 			return fzfErr
@@ -177,7 +175,8 @@ func runCategorize(ctx context.Context) error {
 			_, _ = color.New(color.FgYellow).
 				Fprintf(os.Stderr, "warning: could not add 'include categorization.rules': %v\n", err)
 		}
-		_, _ = color.New(color.FgGreen).Fprintln(os.Stderr, "✓ Rule saved. Recounting…")
+		_, _ = color.New(color.FgGreen).Fprint(os.Stderr, "✓")
+		fmt.Printf(" Rule saved. Recounting...")
 
 		count, err := recountUnknowns(ctx, cfg, absCleanedDir, absMainRules)
 		if err != nil {
@@ -217,6 +216,8 @@ func selectSource(ctx context.Context, cfg *config.Config) (string, error) {
 	}
 	result, err := fzfRun(ctx, []string{
 		"--border-label= Select source ",
+		"--input-label= Source Dir ",
+		"--list-label= Sources ",
 		"--header=Multiple sources found — pick one to categorize",
 	}, strings.Join(cfg.DiscoveredSources, "\n"))
 	if err != nil {
@@ -632,15 +633,20 @@ func recountUnknowns(ctx context.Context, cfg *config.Config, cleanedDir, mainRu
 // user's selection. It re-prompts if the typed query is not a known account.
 func fzfPickDeclaredAccount(ctx context.Context, accounts []string, matcher string) (string, error) {
 	input := strings.Join(accounts, "\n")
-	header := "Matched pattern: " + matcher + "\n" +
-		strings.Repeat("─", 3) + "\n" +
-		"Select an account from accounts.journal (type to filter)"
+	header := "Select an account from accounts.journal (type to filter)"
 	for {
 		result, err := fzfRun(ctx, []string{
 			"--print-query",
 			"--border-label= Pick target account ",
+			"--input-label= Account ",
+			"--list-label= Accounts ",
 			"--header=" + header,
-		}, input)
+			"--ghost=expenses:food",
+			`--preview=printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" {}`,
+			"--preview-window=bottom:5:wrap",
+			"--preview-label= Rule preview ",
+			"--preview-label-pos=4",
+		}, input, "HLB_MATCHER="+matcher)
 		if err != nil {
 			return "", err
 		}
@@ -661,15 +667,21 @@ func fzfPickDeclaredAccount(ctx context.Context, accounts []string, matcher stri
 // user type a new one. Returns an empty string if no comment is desired.
 func fzfPickCategorizationComment(ctx context.Context, absSourceDir, matcher, account string) (string, error) {
 	comments := collectCategorizationComments(filepath.Join(absSourceDir, "categorization.rules"))
-	header := "Matched pattern: " + matcher + "  →  Account: " + account + "\n" +
-		strings.Repeat("─", 3) + "\n" +
-		"Select an existing comment, type a new one, or press Enter to skip"
+	header := "Select an existing comment, type a new one, or press Enter to skip."
 	result, err := fzfRun(ctx, []string{
 		"--print-query",
 		"--bind=enter:accept-or-print-query",
 		"--border-label= Add comment (optional) ",
+		"--input-label= Comment ",
+		"--list-label= Existing comments ",
 		"--header=" + header,
-	}, strings.Join(comments, "\n"))
+		"--ghost=press Enter to skip",
+		`--preview=printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" "$HLB_ACCOUNT"; [ -n "{}" ] && printf '  comment  %s\n' "{}"`,
+		`--bind=change:preview(printf 'if\n%s\n  account2 %s\n' "$HLB_MATCHER" "$HLB_ACCOUNT"; [ -n "$FZF_QUERY" ] && printf '  comment  %s\n' "$FZF_QUERY")`,
+		"--preview-window=bottom:6:wrap",
+		"--preview-label= Rule preview ",
+		"--preview-label-pos=4",
+	}, strings.Join(comments, "\n"), "HLB_MATCHER="+matcher, "HLB_ACCOUNT="+account)
 	if err != nil {
 		return "", err
 	}
@@ -715,12 +727,41 @@ func collectCategorizationComments(path string) []string {
 //
 // Exit code 1 (no match) returns the output buffer as-is, which is useful when
 // --print-query is active. Exit code 130 (Ctrl-C) returns an error.
-func fzfRun(ctx context.Context, args []string, input string) (string, error) {
+//
+// Requires fzf ≥ 0.68.
+func fzfRun(ctx context.Context, args []string, input string, env ...string) (string, error) {
+	// A cohesive, modern color theme (Vague inspired)
+	theme := []string{
+		"fg:#cdcdcd", "bg:#141415", "hl:#7e98e8",
+		"fg+:#c3c3d5", "bg+:#252530", "hl+:#7e98e8",
+		"info:#9bb4bc", "prompt:#6e94b2", "pointer:#c48282",
+		"marker:#7fa563", "spinner:#b4d4cf", "header:#cdcdcd",
+		"border:#878787", "label:#606079",
+		"list-border:#b4d4cf", "list-label:#9bb4bc",
+		"input-border:#7fa563", "input-label:#b4d4cf",
+		"header-border:#f3be7c", "header-label:#d8647e",
+		"preview-border:#bb9dbd", "preview-label:#7e98e8",
+	}
+
+	baseArgs := []string{
+		"--style=full:rounded",
+		"--layout=reverse",
+		"--height=80%",
+		"--border=rounded",
+		"--padding=1,0",
+		"--margin=1",
+		"--list-label-pos=4",
+		"--input-label-pos=4",
+		"--header-label-pos=4",
+		"--color=" + strings.Join(theme, ","),
+	}
+
 	var buf bytes.Buffer
-	cmd := exec.CommandContext(ctx, "fzf", args...)
+	cmd := exec.CommandContext(ctx, "fzf", slices.Concat(baseArgs, args)...)
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
+	cmd.Env = append(os.Environ(), env...)
 
 	runErr := cmd.Run()
 	output := strings.TrimRight(buf.String(), "\n")
@@ -729,9 +770,9 @@ func fzfRun(ctx context.Context, args []string, input string) (string, error) {
 		var exitErr *exec.ExitError
 		if errors.As(runErr, &exitErr) {
 			switch exitErr.ExitCode() {
-			case 1: // no match — still return whatever fzf wrote (query if --print-query)
+			case 1:
 				return output, nil
-			case 130: // SIGINT / Ctrl-C
+			case 130:
 				return "", errors.New("categorize: cancelled by user")
 			}
 		}
