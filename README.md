@@ -22,6 +22,13 @@ I suggest reading my guides in the following order:
 
 If you'd like to dive in deeper, I recommend checking out [Further Reading](#further-reading) below.
 
+## Features
+
+- Fast, automatic builds
+- Additional personal financial metrics
+- Visual categorization flow
+- Opinionated starter layout
+
 ## Installation
 
 Download a pre-built binary from the [releases page](https://github.com/ratoru/hledger-build/releases),
