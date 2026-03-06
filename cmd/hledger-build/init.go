@@ -240,7 +240,7 @@ account1 assets:mybank:checking
 account2 expenses:unknown
 
 # Base Currency
-currency1 USD
+currency USD
 
 # ── Classification rules ──────────────────────────────────────────────────────
 # Rules are applied top-to-bottom; later matches override earlier ones.

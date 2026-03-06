@@ -9,6 +9,7 @@ liabilities:creditcard
 equity
 equity:conversion
 equity:opening balances
+equity:opening/closing balances
 equity:unrealized_pnl
 revenue
 revenue:salary

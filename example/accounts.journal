@@ -33,9 +33,13 @@ account equity:conversion  ; type: V
 account assets:mybank:checking
 account assets:mybank:savings
 
+account assets:pension:vanguard
+
 account liabilities:creditcard
 
 account equity:opening balances
+account equity:opening/closing balances
+account equity:unrealized_pnl
 
 account revenue:salary
 account revenue:interest

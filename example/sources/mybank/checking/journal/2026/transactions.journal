@@ -1,12 +1,16 @@
 2026-01-15 ACME CORP PAYROLL
-    assets:mybank:checking        $3200.00
-    revenue:salary                -3200.00
+    assets:mybank:checking       $3,200.00
+    revenue:salary              $-3,200.00
 
 2026-01-16 SUBWAY
     assets:mybank:checking         $-20.01
-    expenses:unknown                 20.01
+    expenses:unknown                $20.01
 
 2026-02-03 CORNER GROCERY STORE
     assets:mybank:checking          $-52.40
-    expenses:food:groceries           52.40
+    expenses:food:groceries          $52.40
+
+2026-03-05 AMAZON DE EUR 8.50
+    assets:mybank:checking         $-10.00
+    expenses:unknown                $10.00
 

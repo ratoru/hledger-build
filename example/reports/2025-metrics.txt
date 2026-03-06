@@ -1,5 +1,5 @@
 Financial Metrics: 2025
-Generated: 2026-03-05
+Generated: 2026-03-06
 
 Month         Daily Exp    Daily Inc    Net Worth   Savings%  Short Run   Long Run        FIRE#      Min AAW      Min PAW
 ---------- ------------ ------------ ------------ ---------- ---------- ---------- ------------ -------------- --------------

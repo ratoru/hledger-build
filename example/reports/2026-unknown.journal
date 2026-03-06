@@ -1,4 +1,8 @@
 2026-01-16 SUBWAY
     assets:mybank:checking         $-20.01
-    expenses:unknown                 20.01
+    expenses:unknown                $20.01
+
+2026-03-05 AMAZON DE EUR 8.50
+    assets:mybank:checking         $-10.00
+    expenses:unknown                $10.00
 

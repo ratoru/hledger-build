@@ -520,17 +520,32 @@ hledger shows `€11.65` by default and `$10.00` when `--cost` is passed. The
 built-in income statement report already uses `--cost`, so foreign-currency
 expenses appear in your native currency automatically.
 
-When your bank statement embeds the foreign-currency amount in a description
-field, use a `preprocess` script to extract it into a dedicated column, then
-reference that column in your `.rules` file:
+When your bank statement embeds the foreign-currency amount in the description,
+use a `preprocess` script to extract three extra columns:
+
+| Column       | Example | Purpose                                             |
+| ------------ | ------- | --------------------------------------------------- |
+| `fxcurrency` | `€`     | Commodity identifier matching `commodities.journal` |
+| `fxamount`   | `8.50`  | Foreign amount (bare number, no symbol)             |
+| `fxcost`     | `10.00` | Absolute native cost for the `@@` annotation        |
+
+Then reference them in your `.rules` file. If `currency $` is set,
+use `currency2 %fxcurrency` in the foreign-currency rule to supply
+the right symbol for the second posting:
 
 ```
-if
-FOREIGN CCY
-  amount2  %fxamount @@ $%amount
+fields date, description, amount, fxcurrency, fxamount, fxcost
+
+if %fxamount .
+  currency2  %fxcurrency
+  amount2    %fxamount @@ $%fxcost
 ```
 
-See the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
+`fxcost` must be the absolute value of the native amount — rules don't support
+arithmetic, so the preprocess script needs to strip the sign.
+
+The example in `sources/mybank/checking/` demonstrates this end-to-end. See
+also the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
 for a worked example with a real bank CSV.
 
 ### How do you manage multiple years of financial data? {#multiple-years}

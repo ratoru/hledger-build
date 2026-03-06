@@ -8,7 +8,7 @@ skip 1
 
 # Map the three CSV columns to hledger field names by position (1-based).
 # Adjust these to match your bank's actual column order and headers.
-fields date, description, amount
+fields date, description, amount, fxcurrency, fxamount, fxcost
 
 # Date format used by this bank's CSV export.
 date-format %-m/%-d/%Y
@@ -24,7 +24,7 @@ account1 assets:mybank:checking
 account2 expenses:unknown
 
 # Base Currency
-currency1 $
+currency $
 
 # ── Classification rules ──────────────────────────────────────────────────────
 # Rules are applied top-to-bottom; later matches override earlier ones.
@@ -38,6 +38,10 @@ if PAYROLL
 
 if GROCERY
   account2 expenses:food:groceries
+
+if %fxamount .
+  currency2  %fxcurrency
+  amount2    %fxamount @@ $%fxcost
 
 # Add more rules as you encounter new payees, for example:
 # if NETFLIX|SPOTIFY

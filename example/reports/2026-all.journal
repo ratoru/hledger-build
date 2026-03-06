@@ -1,16 +1,16 @@
 2026-01-01 opening balances  ; clopen:2026
     assets:cash                             $200.00 = $200.00
-    assets:mybank:checking                 $2001.58 = $2001.58
-    assets:pension:vanguard                $2087.50 = $2087.50
+    assets:mybank:checking                $2,001.58 = $2,001.58
+    assets:pension:vanguard               $2,087.50 = $2,087.50
     equity:opening/closing balances
 
 2026-01-15 ACME CORP PAYROLL
-    assets:mybank:checking        $3200.00
-    revenue:salary                -3200.00
+    assets:mybank:checking       $3,200.00
+    revenue:salary              $-3,200.00
 
 2026-01-16 SUBWAY
     assets:mybank:checking         $-20.01
-    expenses:unknown                 20.01
+    expenses:unknown                $20.01
 
 2026-01-31 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
@@ -18,7 +18,11 @@
 
 2026-02-03 CORNER GROCERY STORE
     assets:mybank:checking          $-52.40
-    expenses:food:groceries           52.40
+    expenses:food:groceries          $52.40
+
+2026-03-05 AMAZON DE EUR 8.50
+    assets:mybank:checking         $-10.00
+    expenses:unknown                $10.00
 
 2026-04-30 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-500.00
@@ -33,6 +37,6 @@
     assets:pension:vanguard
 
 2026-12-31 pension valuation
-    assets:pension:vanguard                 = $4186.50
+    assets:pension:vanguard                 = $4,186.50
     equity:unrealized_pnl
 
