@@ -86,6 +86,8 @@ func runCategorize(ctx context.Context) error {
 		return err
 	}
 
+	_, _ = color.New(color.Faint).Println("Loading uncategorized transactions...")
+
 	absSourceDir := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources, filepath.FromSlash(src))
 	absMainRules := filepath.Join(absSourceDir, "main.rules")
 
