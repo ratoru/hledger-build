@@ -108,6 +108,7 @@ func runCategorize(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	slices.SortFunc(unknownTxns, func(a, b txn) int { return strings.Compare(a.date, b.date) })
 
 	dateFormat, err := parseDateFormat(absMainRules)
 	if err != nil {
@@ -198,6 +199,7 @@ func runCategorize(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		slices.SortFunc(unknownTxns, func(a, b txn) int { return strings.Compare(a.date, b.date) })
 		displayRows, err = findCSVRowsForTxns(unknownTxns, absCleanedDir, dateFormat)
 		if err != nil {
 			return err
