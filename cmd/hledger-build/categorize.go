@@ -276,21 +276,35 @@ func loadDeclaredAccounts(projectRoot string) ([]string, error) {
 // the current main rules and returns deduplicated unknown transactions.
 // Using the cleaned CSV + rules (rather than pre-generated journal files) ensures
 // that newly written categorization rules are reflected immediately.
+// All hledger invocations run concurrently.
 func collectSourceUnknownTxns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) ([]txn, error) {
 	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return nil, err
 	}
 
+	type result struct {
+		file string
+		txns []txn
+		err  error
+	}
+	ch := make(chan result, len(csvFiles))
+	for _, f := range csvFiles {
+		go func() {
+			ft, runErr := hledgerPrintUnknown(ctx, cfg.HledgerBinary, f, mainRules)
+			ch <- result{file: f, txns: ft, err: runErr}
+		}()
+	}
+
 	seen := map[string]struct{}{}
 	var txns []txn
-	for _, f := range csvFiles {
-		ft, runErr := hledgerPrintUnknown(ctx, cfg.HledgerBinary, f, mainRules)
-		if runErr != nil {
-			_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "warning: %s: %v\n", f, runErr)
+	for range csvFiles {
+		r := <-ch
+		if r.err != nil {
+			_, _ = color.New(color.FgYellow).Fprintf(os.Stderr, "warning: %s: %v\n", r.file, r.err)
 			continue
 		}
-		for _, t := range ft {
+		for _, t := range r.txns {
 			key := t.date + "\x00" + t.description + "\x00" + t.amount
 			if _, ok := seen[key]; !ok {
 				seen[key] = struct{}{}
@@ -423,50 +437,75 @@ func strftimeToGo(sfmt string) string {
 
 // findCSVRowsForTxns matches each unknown transaction to a raw CSV line in the
 // cleaned directory and returns the matching lines deduplicated.
+//
+// Files are processed in chunks of csvFileChunkSize to bound memory usage while
+// still avoiding the O(txns × files) disk reads of reading each file per transaction.
+const csvFileChunkSize = 10
+
 func findCSVRowsForTxns(txns []txn, cleanedDir, dateFormat string) ([]string, error) {
 	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return nil, err
 	}
 
-	seen := map[string]struct{}{}
-	var rows []string
+	// Pre-convert all dates once to avoid repeated conversion inside the loop.
+	type pending struct {
+		t       txn
+		csvDate string
+		matched bool
+	}
+	work := make([]pending, 0, len(txns))
 	for _, t := range txns {
 		csvDate, convErr := convertDateToFormat(t.date, dateFormat)
 		if convErr != nil {
 			continue
 		}
-		for _, f := range csvFiles {
-			line, found, readErr := findCSVLineForTxn(f, csvDate, t.description, t.amount)
-			if readErr != nil || !found {
+		work = append(work, pending{t: t, csvDate: csvDate})
+	}
+
+	seen := map[string]struct{}{}
+	var rows []string
+
+	for chunkStart := 0; chunkStart < len(csvFiles); chunkStart += csvFileChunkSize {
+		chunk := csvFiles[chunkStart:min(chunkStart+csvFileChunkSize, len(csvFiles))]
+
+		// Load this chunk of files into memory.
+		chunkLines := make([][]string, len(chunk))
+		for i, f := range chunk {
+			data, readErr := os.ReadFile(f)
+			if readErr != nil {
 				continue
 			}
-			if _, ok := seen[line]; !ok {
-				seen[line] = struct{}{}
-				rows = append(rows, line)
+			sc := bufio.NewScanner(bytes.NewReader(data))
+			for sc.Scan() {
+				chunkLines[i] = append(chunkLines[i], sc.Text())
 			}
-			break
+		}
+
+		// Match only unmatched transactions against this chunk.
+		for i := range work {
+			if work[i].matched {
+				continue
+			}
+			p := &work[i]
+		outer:
+			for _, lines := range chunkLines {
+				for _, line := range lines {
+					if strings.Contains(line, p.csvDate) &&
+						strings.Contains(line, p.t.description) &&
+						strings.Contains(line, p.t.amount) {
+						if _, ok := seen[line]; !ok {
+							seen[line] = struct{}{}
+							rows = append(rows, line)
+						}
+						p.matched = true
+						break outer
+					}
+				}
+			}
 		}
 	}
 	return rows, nil
-}
-
-// findCSVLineForTxn scans a CSV file for a line containing all three values.
-func findCSVLineForTxn(csvPath, date, description, amount string) (string, bool, error) {
-	data, err := os.ReadFile(csvPath)
-	if err != nil {
-		return "", false, err
-	}
-	sc := bufio.NewScanner(bytes.NewReader(data))
-	for sc.Scan() {
-		line := sc.Text()
-		if strings.Contains(line, date) &&
-			strings.Contains(line, description) &&
-			strings.Contains(line, amount) {
-			return line, true, nil
-		}
-	}
-	return "", false, nil
 }
 
 // ── categorization.rules parser/writer ────────────────────────────────────────
@@ -604,25 +643,38 @@ func writeCategorizationRule(path, matcher, account, comment string) error {
 
 // recountUnknowns runs hledger against each cleaned CSV file with the current
 // main rules and returns the number of unique unknown (date, description) pairs.
+// All hledger invocations run concurrently.
 func recountUnknowns(ctx context.Context, cfg *config.Config, cleanedDir, mainRules string) (int, error) {
 	csvFiles, err := walkGlob(cleanedDir)
 	if err != nil {
 		return 0, err
 	}
 
-	seen := map[string]struct{}{}
+	type result struct {
+		out []byte
+		err error
+	}
+	ch := make(chan result, len(csvFiles))
 	for _, csvFile := range csvFiles {
-		out, runErr := exec.CommandContext(ctx, cfg.HledgerBinary,
-			"-f", csvFile,
-			"--rules", mainRules,
-			"print", "expenses:unknown",
-			"-O", "csv",
-		).Output()
-		if runErr != nil {
+		go func() {
+			out, runErr := exec.CommandContext(ctx, cfg.HledgerBinary,
+				"-f", csvFile,
+				"--rules", mainRules,
+				"print", "expenses:unknown",
+				"-O", "csv",
+			).Output()
+			ch <- result{out: out, err: runErr}
+		}()
+	}
+
+	seen := map[string]struct{}{}
+	for range csvFiles {
+		r := <-ch
+		if r.err != nil {
 			continue
 		}
-		r := csv.NewReader(bytes.NewReader(out))
-		header, err := r.Read()
+		rd := csv.NewReader(bytes.NewReader(r.out))
+		header, err := rd.Read()
 		if err != nil {
 			continue
 		}
@@ -634,14 +686,14 @@ func recountUnknowns(ctx context.Context, cfg *config.Config, cleanedDir, mainRu
 		}
 		need := max(dateCol, descCol) + 1
 		for {
-			rec, err := r.Read()
+			rec, err := rd.Read()
 			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil || len(rec) < need {
 				continue
 			}
-			seen[rec[dateCol]+"\x00"+rec[descCol]] = struct{}{} // date + description
+			seen[rec[dateCol]+"\x00"+rec[descCol]] = struct{}{}
 		}
 	}
 	return len(seen), nil
