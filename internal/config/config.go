@@ -2,6 +2,8 @@
 package config
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -431,6 +433,15 @@ func DiscoverRulesFiles(
 
 	var rulesFile string
 	var allFiles []string
+	seen := map[string]struct{}{}
+
+	addFile := func(relPath string) {
+		if _, dup := seen[relPath]; !dup {
+			seen[relPath] = struct{}{}
+			allFiles = append(allFiles, relPath)
+		}
+	}
+
 	for _, dir := range levels {
 		abs := filepath.Join(dir, "main.rules")
 		if _, statErr := os.Stat(abs); statErr != nil {
@@ -441,9 +452,61 @@ func DiscoverRulesFiles(
 			return "", nil, relErr
 		}
 		relPath = filepath.ToSlash(relPath)
-		allFiles = append(allFiles, relPath)
+		addFile(relPath)
 		rulesFile = relPath // deepest found wins
+
+		// Collect files included via "include <name>" directives so that
+		// changes to (e.g.) categorization.rules also trigger a rebuild.
+		for _, inc := range collectIncludedRulesFiles(abs, projectRoot) {
+			addFile(inc)
+		}
 	}
 
 	return rulesFile, allFiles, nil
+}
+
+// collectIncludedRulesFiles parses a .rules file and returns the
+// project-root-relative paths of every file referenced by an
+// "include <filename>" directive. Only files that exist on disk are returned.
+// The search is not recursive (hledger itself does not support nested includes).
+func collectIncludedRulesFiles(rulesPath, projectRoot string) []string {
+	data, err := os.ReadFile(rulesPath)
+	if err != nil {
+		return nil
+	}
+	dir := filepath.Dir(rulesPath)
+	var out []string
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	for sc.Scan() {
+		name, ok := strings.CutPrefix(strings.TrimSpace(sc.Text()), "include ")
+		if !ok {
+			continue
+		}
+		// Strip trailing inline comments: " ;" and " #" mark comment starts.
+		for _, sep := range []string{" ;", " #"} {
+			if i := strings.Index(name, sep); i >= 0 {
+				name = name[:i]
+			}
+		}
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		native := filepath.FromSlash(name)
+		var abs string
+		if filepath.IsAbs(native) {
+			abs = native
+		} else {
+			abs = filepath.Join(dir, native)
+		}
+		if _, statErr := os.Stat(abs); statErr != nil {
+			continue // file doesn't exist yet; skip
+		}
+		rel, relErr := filepath.Rel(projectRoot, abs)
+		if relErr != nil {
+			continue
+		}
+		out = append(out, filepath.ToSlash(rel))
+	}
+	return out
 }

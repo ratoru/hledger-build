@@ -253,6 +253,79 @@ func TestRulesDiscoveryFallback(t *testing.T) {
 	}
 }
 
+// TestRulesDiscoveryInclude checks that files referenced via "include" in a
+// main.rules file are also tracked as deps so that changes trigger a rebuild.
+func TestRulesDiscoveryInclude(t *testing.T) {
+	dir := t.TempDir()
+	dirs := Directories{
+		Sources: "sources",
+		Reports: "reports",
+		Raw:     "raw",
+		Cleaned: "cleaned",
+		Journal: "journal",
+		Build:   ".build",
+		Prices:  "sources/prices",
+		Manual:  "_manual_",
+	}
+
+	writeFile(t, filepath.Join(dir, "sources", "mybank", "main.rules"),
+		"# rules\ninclude categorization.rules ; written by categorize\n")
+	writeFile(t, filepath.Join(dir, "sources", "mybank", "categorization.rules"),
+		"if amazon\n  account2 expenses:shopping\n")
+
+	_, allFiles, err := DiscoverRulesFiles(dir, dirs, "mybank")
+	if err != nil {
+		t.Fatalf("DiscoverRulesFiles: %v", err)
+	}
+
+	want := []string{"sources/mybank/main.rules", "sources/mybank/categorization.rules"}
+	if len(allFiles) != len(want) {
+		t.Fatalf("allFiles = %v, want %v", allFiles, want)
+	}
+	for i, w := range want {
+		if allFiles[i] != w {
+			t.Errorf("allFiles[%d] = %q, want %q", i, allFiles[i], w)
+		}
+	}
+}
+
+// TestRulesDiscoveryInclude checks that files referenced via "include" in a
+// main.rules file are also tracked as deps so that changes trigger a rebuild.
+func TestRulesDiscoveryIncludeAbsolute(t *testing.T) {
+	dir := t.TempDir()
+	dirs := Directories{
+		Sources: "sources",
+		Reports: "reports",
+		Raw:     "raw",
+		Cleaned: "cleaned",
+		Journal: "journal",
+		Build:   ".build",
+		Prices:  "sources/prices",
+		Manual:  "_manual_",
+	}
+
+	sharedRules := filepath.Join(dir, "shared", "common.rules")
+	writeFile(t, sharedRules, "# shared\n")
+	writeFile(t, filepath.Join(dir, "sources", "mybank", "main.rules"),
+		"# rules\ninclude "+sharedRules+"\n")
+
+	_, allFiles, err := DiscoverRulesFiles(dir, dirs, "mybank")
+	if err != nil {
+		t.Fatalf("DiscoverRulesFiles: %v", err)
+	}
+
+	sharedRel := filepath.ToSlash(filepath.Join("shared", "common.rules"))
+	want := []string{"sources/mybank/main.rules", sharedRel}
+	if len(allFiles) != len(want) {
+		t.Fatalf("allFiles = %v, want %v", allFiles, want)
+	}
+	for i, w := range want {
+		if allFiles[i] != w {
+			t.Errorf("allFiles[%d] = %q, want %q", i, allFiles[i], w)
+		}
+	}
+}
+
 // TestRulesDiscoveryNone checks that no rules files returns empty results.
 func TestRulesDiscoveryNone(t *testing.T) {
 	dir := t.TempDir()
