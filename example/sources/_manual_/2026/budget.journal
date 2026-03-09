@@ -1,0 +1,4 @@
+; Budget rules for 2026
+
+~ monthly in 2026
+  (expenses:food)            $400

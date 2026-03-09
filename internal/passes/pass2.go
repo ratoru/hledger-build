@@ -85,6 +85,7 @@ func GeneratePass2Steps(cfg *config.Config) ([]runner.Step, error) {
 			{cfg.Reports.BalanceSheet, cfg.Directories.Reports + "/" + yearStr + "-balance-sheet.txt"},
 			{cfg.Reports.Cashflow, cfg.Directories.Reports + "/" + yearStr + "-cashflow.txt"},
 			{cfg.Reports.Unknown, cfg.Directories.Reports + "/" + yearStr + "-unknown.journal"},
+			{cfg.Reports.Budget, cfg.Directories.Reports + "/" + yearStr + "-budget.txt"},
 		}
 
 		for _, b := range builtins {

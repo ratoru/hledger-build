@@ -48,6 +48,11 @@ const defaultToml = `# hledger-build.toml
 # balance_sheet    = { args = ["balancesheet", "--no-elide"] }
 # cashflow         = { args = ["cashflow", "not:desc:(opening balances)", "--no-elide"] }
 # unknown          = { args = ["print", "unknown"] }
+# budget           = { enabled = false, args = ["bal", "--budget", "--monthly", "--no-elide"] }
+#
+# The budget report is disabled by default; enable it when you have periodic
+# transaction rules ("~ monthly ...") defined in your _manual_ journals.
+# Use --budget=DESCPAT (e.g. "--budget=monthly") to select a subset of rules.
 #
 # Monthly financial metrics (daily spending, savings rate, net worth, FIRE#).
 # Enabled by default. Set your age to unlock AAW/PAW wealth benchmarks.

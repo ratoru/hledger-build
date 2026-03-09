@@ -262,6 +262,7 @@ hledger-build generates these reports for every year in your configured range:
 | `{year}-balance-sheet.txt`    | Balance sheet                                |
 | `{year}-cashflow.txt`         | Cash flow statement                          |
 | `{year}-unknown.journal`      | Unclassified transactions for review         |
+| `{year}-budget.txt`           | Budget performance vs goals (opt-in)         |
 | `{year}-metrics.txt`          | Monthly personal finance metrics (see below) |
 
 For multi-year setups, hledger-build also generates:
@@ -344,6 +345,10 @@ Everything is optional.
 # [reports.unknown]
 # args    = ["print", "unknown"]
 # enabled = true
+#
+# [reports.budget]
+# enabled = false                                           # opt-in
+# args    = ["bal", "--budget", "--monthly", "--no-elide"]
 
 # ── Metrics report ───
 # [reports.metrics]

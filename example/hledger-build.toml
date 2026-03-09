@@ -32,6 +32,12 @@
 # balance_sheet    = { args = ["balancesheet", "--no-elide"] }
 # cashflow         = { args = ["cashflow", "not:desc:(opening balances)", "--no-elide"] }
 # unknown          = { args = ["print", "unknown"] }
+budget = { enabled = false, args = [
+  "bal",
+  "--budget",
+  "--monthly",
+  "--no-elide",
+] }
 #
 # Monthly financial metrics (daily spending, savings rate, net worth, FIRE#).
 # Enabled by default. Set your age to unlock AAW/PAW wealth benchmarks.

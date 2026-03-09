@@ -100,6 +100,7 @@ type Reports struct {
 	BalanceSheet    BuiltinReport `mapstructure:"balance_sheet"`
 	Cashflow        BuiltinReport `mapstructure:"cashflow"`
 	Unknown         BuiltinReport `mapstructure:"unknown"`
+	Budget          BuiltinReport `mapstructure:"budget"`
 	Metrics         MetricsReport `mapstructure:"metrics"`
 }
 
@@ -168,6 +169,7 @@ func defaultReports() Reports {
 			Enabled: true,
 		},
 		Unknown: BuiltinReport{Args: []string{"print", "unknown"}, Enabled: true},
+		Budget:  BuiltinReport{Args: []string{"bal", "--budget", "--monthly", "--no-elide"}, Enabled: false},
 	}
 }
 
@@ -195,6 +197,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("reports.balance_sheet.enabled", true)
 	v.SetDefault("reports.cashflow.enabled", true)
 	v.SetDefault("reports.unknown.enabled", true)
+	v.SetDefault("reports.budget.enabled", false)
 	v.SetDefault("reports.metrics.enabled", true)
 	v.SetDefault("reports.metrics.fire_factor", 25)
 	v.SetDefault("reports.metrics.accounts.exclude_expenses", []string{"expenses:gross"})
@@ -261,6 +264,9 @@ func Load(path string) (*Config, error) {
 	}
 	if len(cfg.Reports.Unknown.Args) == 0 {
 		cfg.Reports.Unknown.Args = defaults.Unknown.Args
+	}
+	if len(cfg.Reports.Budget.Args) == 0 {
+		cfg.Reports.Budget.Args = defaults.Budget.Args
 	}
 
 	// Resolve jobs default
