@@ -71,7 +71,42 @@ func runCheck(ctx context.Context) error {
 	if !flagQuiet {
 		_, _ = color.New(color.FgGreen, color.Bold).Println("\nAll checks passed.")
 	}
+
+	// Warn about any remaining expenses:unknown transactions.
+	var journals []string
+	for year := cfg.FirstYear; year <= cfg.CurrentYear; year++ {
+		journals = append(journals, strconv.Itoa(year)+".journal")
+	}
+	if _, err := os.Stat(filepath.Join(cfg.ProjectRoot, "all.journal")); err == nil {
+		journals = append(journals, "all.journal")
+	}
+	warnUnknownExpenses(ctx, cfg, journals)
+
 	return nil
+}
+
+// warnUnknownExpenses prints a yellow warning for any journal that contains
+// expenses:unknown transactions, suggesting 'hledger-build categorize'.
+func warnUnknownExpenses(ctx context.Context, cfg *config.Config, journals []string) {
+	var withUnknown []string
+	for _, j := range journals {
+		cmd := exec.CommandContext(ctx, cfg.HledgerBinary, "-f", j, "print", "expenses:unknown")
+		cmd.Dir = cfg.ProjectRoot
+		out, err := cmd.Output()
+		if err == nil && len(strings.TrimSpace(string(out))) > 0 {
+			withUnknown = append(withUnknown, j)
+		}
+	}
+	if len(withUnknown) == 0 {
+		return
+	}
+	if !flagQuiet {
+		_, _ = color.New(color.FgYellow, color.Bold).Printf(
+			"\nWarning: expenses:unknown transactions found in: %s\n",
+			strings.Join(withUnknown, ", "),
+		)
+		fmt.Println("Run 'hledger-build categorize' to assign them.")
+	}
 }
 
 // runHledgerCheck runs `hledger -f journalFile --strict check [check_query]`.
