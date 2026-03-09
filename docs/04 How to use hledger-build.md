@@ -694,6 +694,21 @@ existing one:
 This approach is described in detail in
 [Full-fledged hledger](https://github.com/adept/full-fledged-hledger/wiki/Adding-more-accounts#lets-make-sure-that-transfers-are-not-double-counted).
 
+### How do you rebuild automatically when files change? {#watch-mode}
+
+`hledger-build` is a plain Unix command, so pair it with any file-watcher:
+
+```bash
+# watchexec (https://github.com/watchexec/watchexec)
+watchexec -w sources -- hledger-build
+
+# fswatch (macOS / Linux)
+fswatch -o sources/ | xargs -n1 -I{} hledger-build
+```
+
+The incremental cache means only what actually changed gets rebuilt, so
+repeated runs are fast.
+
 ### How do you track subscriptions? {#subscriptions}
 
 You can either create an account `expenses:subscriptions` and classify them
