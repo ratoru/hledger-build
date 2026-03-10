@@ -37,7 +37,9 @@ type ifBlock struct {
 }
 
 func newCategorizeCmd() *cobra.Command {
-	return &cobra.Command{
+	var printUnknown bool
+	var source string
+	cmd := &cobra.Command{
 		Use:   "categorize",
 		Short: "Interactively categorize expenses:unknown transactions using fzf.",
 		Long: `Interactively categorize expenses:unknown transactions using fzf.
@@ -60,17 +62,28 @@ included in main.rules automatically), and the remaining unknown
 transactions are recounted. The loop repeats until none remain.
 
 Requires fzf to be installed and available in PATH.`,
-		RunE:         func(cmd *cobra.Command, args []string) error { return runCategorize(cmd.Context()) },
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCategorize(cmd.Context(), printUnknown, source)
+		},
 		SilenceUsage: true,
 	}
+	cmd.Flags().
+		BoolVar(&printUnknown, "print-unknown", false, "print uncategorized raw CSV rows to stdout and exit (no fzf required)")
+	cmd.Flags().
+		StringVar(&source, "source", "", "source directory to use (required when multiple sources exist and --print-unknown is set)")
+	return cmd
 }
 
-func runCategorize(ctx context.Context) error {
+func runCategorize(ctx context.Context, printUnknown bool, source string) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if _, err := exec.LookPath("fzf"); err != nil {
-		return errors.New("fzf not found in PATH — install fzf to use 'categorize'\n  https://github.com/junegunn/fzf")
+	if !printUnknown {
+		if _, err := exec.LookPath("fzf"); err != nil {
+			return errors.New(
+				"fzf not found in PATH — install fzf to use 'categorize'\n  https://github.com/junegunn/fzf",
+			)
+		}
 	}
 
 	cfg, err := loadConfig()
@@ -81,12 +94,14 @@ func runCategorize(ctx context.Context) error {
 		return err
 	}
 
-	src, err := selectSource(ctx, cfg)
+	src, err := selectSource(ctx, cfg, source, printUnknown)
 	if err != nil {
 		return err
 	}
 
-	_, _ = color.New(color.Faint).Println("Loading uncategorized transactions...")
+	if !printUnknown {
+		_, _ = color.New(color.Faint).Println("Loading uncategorized transactions...")
+	}
 
 	absSourceDir := filepath.Join(cfg.ProjectRoot, cfg.Directories.Sources, filepath.FromSlash(src))
 	absMainRules := filepath.Join(absSourceDir, "main.rules")
@@ -129,6 +144,13 @@ func runCategorize(ctx context.Context) error {
 	if len(displayRows) == 0 {
 		_, _ = color.New(color.FgGreen).Fprint(os.Stderr, "✓")
 		fmt.Println(" No unknown transactions found — nothing to categorize.")
+		return nil
+	}
+
+	if printUnknown {
+		for _, row := range displayRows {
+			fmt.Println(row)
+		}
 		return nil
 	}
 
@@ -216,13 +238,31 @@ func runCategorize(ctx context.Context) error {
 
 // ── Source selection ───────────────────────────────────────────────────────────
 
-// selectSource returns the sole discovered source or lets the user pick via fzf.
-func selectSource(ctx context.Context, cfg *config.Config) (string, error) {
+// selectSource returns the source to use. If source is non-empty it is
+// validated against the discovered list. If noFZF is true and multiple sources
+// exist without an explicit selection, an error is returned.
+func selectSource(ctx context.Context, cfg *config.Config, source string, noFZF bool) (string, error) {
 	if len(cfg.DiscoveredSources) == 0 {
 		return "", errors.New("no sources discovered; add CSV files under sources/ first")
 	}
+	if source != "" {
+		if !slices.Contains(cfg.DiscoveredSources, source) {
+			return "", fmt.Errorf(
+				"source %q not found; available: %s",
+				source,
+				strings.Join(cfg.DiscoveredSources, ", "),
+			)
+		}
+		return source, nil
+	}
 	if len(cfg.DiscoveredSources) == 1 {
 		return cfg.DiscoveredSources[0], nil
+	}
+	if noFZF {
+		return "", fmt.Errorf(
+			"multiple sources found — use --source to select one: %s",
+			strings.Join(cfg.DiscoveredSources, ", "),
+		)
 	}
 	result, err := fzfRun(ctx, []string{
 		"--border-label= Select source ",
