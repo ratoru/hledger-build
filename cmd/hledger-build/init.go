@@ -358,6 +358,20 @@ func runInit(ctx context.Context) error {
 	}
 	fmt.Printf("created  sources/_manual/%s/opening.journal\n", yearStr)
 
+	// Write budget.journal — periodic transaction rules for the budget report.
+	budgetPath := filepath.Join(cwd, "sources", "_manual", yearStr, "budget.journal")
+	if err := os.WriteFile(budgetPath, []byte(manualBudgetContent(year)), 0o600); err != nil {
+		return fmt.Errorf("writing budget.journal: %w", err)
+	}
+	fmt.Printf("created  sources/_manual/%s/budget.journal\n", yearStr)
+
+	// Write valuations.journal — end-of-year investment valuation entries.
+	valuationsPath := filepath.Join(cwd, "sources", "_manual", yearStr, "valuations.journal")
+	if err := os.WriteFile(valuationsPath, []byte(manualValuationsContent(year)), 0o600); err != nil {
+		return fmt.Errorf("writing valuations.journal: %w", err)
+	}
+	fmt.Printf("created  sources/_manual/%s/valuations.journal\n", yearStr)
+
 	// Write the hledger CSV rules file that maps CSV columns to accounts.
 	rulesPath := filepath.Join(cwd, "sources", "mybank", "checking", "main.rules")
 	if err := os.WriteFile(rulesPath, []byte(exampleRules), 0o600); err != nil {
@@ -446,6 +460,32 @@ func openingJournalContent(year int) string {
 	)
 }
 
+// manualBudgetContent returns the content of sources/_manual/{year}/budget.journal.
+// Users add periodic transaction rules here to drive the budget report.
+func manualBudgetContent(year int) string {
+	return fmt.Sprintf(
+		"; Budget rules for %d\n"+
+			"\n"+
+			"; ~ monthly in %d\n"+
+			";  (expenses:food)       $500",
+		year, year,
+	)
+}
+
+// manualValuationsContent returns the content of sources/_manual/{year}/valuations.journal.
+// Users uncomment and update the entries with actual end-of-year market values.
+func manualValuationsContent(year int) string {
+	return fmt.Sprintf(
+		"; Valuation entries for %d.\n"+
+			"; Uncomment and update with actual end-of-year market values.\n"+
+			"\n"+
+			"; %d-12-31 pension valuation\n"+
+			";     assets:pension:vanguard        = $1087.50\n"+
+			";     equity:unrealized_pnl\n",
+		year, year,
+	)
+}
+
 // yearJournalContent returns the content of the {year}.journal entry-point file.
 // hledger-build auto-generates reports/{year}-imports.journal listing all
 // ingest journal includes, so users only need to add their manual entries here.
@@ -463,7 +503,7 @@ func yearJournalContent(year int) string {
 			"\n"+
 			"include commodities.journal\n"+
 			"include accounts.journal\n"+
-			"include sources/_manual/%d/opening.journal\n"+
+			"include sources/_manual/%d/*.journal\n"+
 			"include sources/%d-imports.journal\n",
 		year, year, year, year, year, year,
 	)

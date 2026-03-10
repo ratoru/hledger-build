@@ -64,6 +64,7 @@ Running without a subcommand is equivalent to 'hledger-build run'.`,
 
 	root.AddCommand(newRunCmd())
 	root.AddCommand(newInitCmd())
+	root.AddCommand(newAddCmd())
 	root.AddCommand(newCleanCmd())
 	root.AddCommand(newStatusCmd())
 	root.AddCommand(newCheckCmd())
