@@ -36,7 +36,7 @@ const defaultToml = `# hledger-build.toml
 # journal = "journal"
 # build = ".build"
 # prices = "sources/prices"
-# manual = "_manual_"
+# manual = "_manual"
 
 # --- Built-in Reports ---
 # Standard hledger reports generated for each year. All enabled by default.
@@ -51,7 +51,7 @@ const defaultToml = `# hledger-build.toml
 # budget           = { enabled = false, args = ["bal", "--budget", "--monthly", "--no-elide"] }
 #
 # The budget report is disabled by default; enable it when you have periodic
-# transaction rules ("~ monthly ...") defined in your _manual_ journals.
+# transaction rules ("~ monthly ...") defined in your _manual journals.
 # Use --budget=DESCPAT (e.g. "--budget=monthly") to select a subset of rules.
 #
 # Monthly financial metrics (daily spending, savings rate, net worth, FIRE#).
@@ -306,7 +306,7 @@ func runInit(ctx context.Context) error {
 	// Create standard directories.
 	dirs := []string{
 		filepath.Join(cwd, "sources", "mybank", "checking", "raw", yearStr),
-		filepath.Join(cwd, "sources", "_manual_", yearStr),
+		filepath.Join(cwd, "sources", "_manual", yearStr),
 		filepath.Join(cwd, "reports"),
 		filepath.Join(cwd, ".build"),
 	}
@@ -351,12 +351,12 @@ func runInit(ctx context.Context) error {
 	}
 	fmt.Printf("created  sources/mybank/checking/raw/%s/transactions.csv\n", yearStr)
 
-	// Write opening.journal in the _manual_ directory for initial account balances.
-	openingPath := filepath.Join(cwd, "sources", "_manual_", yearStr, "opening.journal")
+	// Write opening.journal in the _manual directory for initial account balances.
+	openingPath := filepath.Join(cwd, "sources", "_manual", yearStr, "opening.journal")
 	if err := os.WriteFile(openingPath, []byte(openingJournalContent(year)), 0o600); err != nil {
 		return fmt.Errorf("writing opening.journal: %w", err)
 	}
-	fmt.Printf("created  sources/_manual_/%s/opening.journal\n", yearStr)
+	fmt.Printf("created  sources/_manual/%s/opening.journal\n", yearStr)
 
 	// Write the hledger CSV rules file that maps CSV columns to accounts.
 	rulesPath := filepath.Join(cwd, "sources", "mybank", "checking", "main.rules")
@@ -429,7 +429,7 @@ func exampleCSVContent(year int) string {
 }
 
 // openingJournalContent returns a sample opening-balances journal entry.
-// This lives in sources/_manual_/{year}/ and is included by {year}.journal.
+// This lives in sources/_manual/{year}/ and is included by {year}.journal.
 func openingJournalContent(year int) string {
 	return fmt.Sprintf(
 		"; opening.journal – initial account balances as of %d-01-01.\n"+
@@ -463,7 +463,7 @@ func yearJournalContent(year int) string {
 			"\n"+
 			"include commodities.journal\n"+
 			"include accounts.journal\n"+
-			"include sources/_manual_/%d/opening.journal\n"+
+			"include sources/_manual/%d/opening.journal\n"+
 			"include sources/%d-imports.journal\n",
 		year, year, year, year, year, year,
 	)

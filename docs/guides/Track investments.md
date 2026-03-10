@@ -15,11 +15,11 @@ We assume:
 
 ## Recording contributions
 
-Create a journal file for contributions in `_manual_`. For a pension with
+Create a journal file for contributions in `_manual`. For a pension with
 quarterly contributions from a checking account:
 
 ```ledger
-; sources/_manual_/2026/pension.journal
+; sources/_manual/2026/pension.journal
 
 2026-01-31 (BP) Vanguard 401k contribution
     assets:mybank:checking         $-1500.00
@@ -35,7 +35,7 @@ Include it from your year journal:
 ```ledger
 ; 2026.journal
 include commodities.journal
-include sources/_manual_/2026/*.journal
+include sources/_manual/2026/*.journal
 include sources/2026-imports.journal
 ```
 

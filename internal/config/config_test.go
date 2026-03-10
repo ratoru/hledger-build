@@ -40,7 +40,7 @@ func TestDefaults(t *testing.T) {
 	if cfg.Directories.Build != ".build" {
 		t.Errorf("Directories.Build = %q", cfg.Directories.Build)
 	}
-	if cfg.Directories.Manual != "_manual_" {
+	if cfg.Directories.Manual != "_manual" {
 		t.Errorf("Directories.Manual = %q", cfg.Directories.Manual)
 	}
 	if len(cfg.Pipeline) == 0 {
@@ -106,7 +106,7 @@ func TestSourceDiscovery(t *testing.T) {
 	// Non-source dir (no raw/)
 	mkdirAll(t, filepath.Join(dir, "sources", "notasource"))
 	// Manual dir — should be skipped
-	mkdirAll(t, filepath.Join(dir, "sources", "_manual_", "2023"))
+	mkdirAll(t, filepath.Join(dir, "sources", "_manual", "2023"))
 
 	cfg, err := Load(filepath.Join(dir, "hledger-build.toml"))
 	if err != nil {
@@ -131,7 +131,7 @@ func TestSourceDiscovery(t *testing.T) {
 		t.Error("'notasource' has no raw/ dir, should not be discovered")
 	}
 	for _, s := range cfg.DiscoveredSources {
-		if s == "_manual_" || s == "_manual_/2023" {
+		if s == "_manual" || s == "_manual/2023" {
 			t.Errorf("manual dir should not be discovered as source: %q", s)
 		}
 	}
@@ -144,7 +144,7 @@ func TestYearDiscovery(t *testing.T) {
 	mkdirAll(t, filepath.Join(dir, "sources", "lloyds", "raw", "2023"))
 	mkdirAll(t, filepath.Join(dir, "sources", "chase", "raw", "2022"))
 	mkdirAll(t, filepath.Join(dir, "sources", "prices", "2020"))
-	mkdirAll(t, filepath.Join(dir, "sources", "_manual_", "2019"))
+	mkdirAll(t, filepath.Join(dir, "sources", "_manual", "2019"))
 
 	cfg, err := Load(filepath.Join(dir, "hledger-build.toml"))
 	if err != nil {
@@ -192,7 +192,7 @@ func TestRulesDiscovery(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")
@@ -234,7 +234,7 @@ func TestRulesDiscoveryFallback(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")
@@ -265,7 +265,7 @@ func TestRulesDiscoveryInclude(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	writeFile(t, filepath.Join(dir, "sources", "mybank", "main.rules"),
@@ -301,7 +301,7 @@ func TestRulesDiscoveryIncludeAbsolute(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	sharedRules := filepath.Join(dir, "shared", "common.rules")
@@ -337,7 +337,7 @@ func TestRulesDiscoveryNone(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	rulesFile, allFiles, err := DiscoverRulesFiles(dir, dirs, "lloyds")
@@ -363,7 +363,7 @@ func TestRulesDiscoveryNested(t *testing.T) {
 		Journal: "journal",
 		Build:   ".build",
 		Prices:  "sources/prices",
-		Manual:  "_manual_",
+		Manual:  "_manual",
 	}
 
 	writeFile(t, filepath.Join(dir, "sources", "main.rules"), "# global\n")

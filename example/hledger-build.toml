@@ -20,7 +20,7 @@
 # journal = "journal"
 # build = ".build"
 # prices = "sources/prices"
-# manual = "_manual_"
+# manual = "_manual"
 
 # --- Built-in Reports ---
 # Standard hledger reports generated for each year. All enabled by default.

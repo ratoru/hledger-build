@@ -30,7 +30,7 @@ my-ledger/
 │
 ├── sources/
 │   ├── 2026-imports.journal    # auto-generated: include lines for all source journals
-│   ├── _manual_/               # hand-written journal entries (not imported)
+│   ├── _manual/               # hand-written journal entries (not imported)
 │   │   └── 2026/
 │   │       └── opening.journal
 │   │
@@ -68,9 +68,9 @@ my-ledger/
 Key conventions:
 
 - **Sources are auto-discovered**: any directory under `sources/` that contains
-  a `raw/` subdirectory is treated as a data source. `_manual_` is excluded.
+  a `raw/` subdirectory is treated as a data source. `_manual` is excluded.
 - **Years are auto-discovered**: 4-digit subdirectory names under any source's
-  `raw/` directory, under `sources/_manual_/`, or under `prices/`.
+  `raw/` directory, under `sources/_manual/`, or under `prices/`.
 - **Rules files use a standard naming convention**: hledger-build looks for
   `main.rules` starting in the source directory and walking up toward `sources/`.
   The deepest (most specific) `main.rules` found is passed to hledger. For a
@@ -188,7 +188,7 @@ journal only needs to reference the stub and your hand-written entries:
 ```ledger
 ; 2026.journal
 include commodities.journal
-include sources/_manual_/2026/opening.journal
+include sources/_manual/2026/opening.journal
 include sources/2026-imports.journal
 
 ; For years after the first, also include the auto-generated opening balances:
@@ -233,7 +233,7 @@ automatically.
 
 ### Opening balances
 
-The `sources/_manual_/{year}/opening.journal` file records your real account
+The `sources/_manual/{year}/opening.journal` file records your real account
 balances at the start of tracking. Use balance assertions (`=`) to let hledger
 verify the running totals:
 
@@ -317,7 +317,7 @@ Everything is optional.
 # journal  = "journal"
 # build    = ".build"
 # prices   = "sources/prices"
-# manual   = "_manual_"
+# manual   = "_manual"
 
 # ── Built-in reports ──────────────────────────────────────────────────────────
 # All enabled by default. Add a section only to change args or disable a report.
@@ -490,7 +490,7 @@ extra_deps = ["prices/2026/prices.csv"]
 
 Accurate gross income helps with savings rate and tax calculations. Bank
 statements show only the net deposit. If you receive a salary, add a monthly
-adjustment in `_manual_`:
+adjustment in `_manual`:
 
 ```ledger
 ; [Auto-generated from bank statement]
@@ -623,7 +623,7 @@ When you add `2024.journal` for the first time and already have `2023.journal`:
 3. **Run `hledger-build`**. The pipeline generates `reports/2023-closing.journal`
    and `reports/2024-opening.journal` automatically, in the right order.
 
-The first year keeps its hand-written `sources/_manual_/{year}/opening.journal`
+The first year keeps its hand-written `sources/_manual/{year}/opening.journal`
 with real account balances. Every subsequent year replaces that with
 `include reports/{year}-opening.journal`.
 

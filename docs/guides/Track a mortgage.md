@@ -14,7 +14,7 @@ When you take out the mortgage, record the house purchase, your downpayment,
 any fees rolled into the loan, and the liability itself:
 
 ```ledger
-; sources/_manual_/2014/mortgage.journal
+; sources/_manual/2014/mortgage.journal
 
 2014-01-02 Taking out mortgage
     assets:bank:checking          £-150.00   ; downpayment
@@ -32,7 +32,7 @@ Import or manually record each payment as a transfer into `liabilities:mortgage`
 Do **not** split out interest at this stage — that is `hledger-interest`'s job:
 
 ```ledger
-; sources/_manual_/2014/mortgage.journal
+; sources/_manual/2014/mortgage.journal
 
 2014-03-31 (BGC) HSBC mortgage payment
     assets:bank:checking          £-100.00
@@ -89,7 +89,7 @@ The pattern requires:
 ```ledger
 ; 2014.journal
 include commodities.journal
-include sources/_manual_/2014/*.journal
+include sources/_manual/2014/*.journal
 include sources/2014-imports.journal
 include reports/2014-mortgage-interest.journal
 ```

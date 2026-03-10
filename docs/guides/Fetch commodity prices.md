@@ -202,7 +202,7 @@ transaction data:
 ; 2026.journal
 include commodities.journal
 include sources/prices/2026/USD.prices   ← add this
-include sources/_manual_/2026/opening.journal
+include sources/_manual/2026/opening.journal
 include sources/2026-imports.journal
 ```
 

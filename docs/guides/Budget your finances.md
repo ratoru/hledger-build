@@ -11,13 +11,13 @@ budgeting (stricter, more work).
 ## Defining budget goals
 
 Budget goals are written as periodic transaction rules (`~`) in a journal file.
-The natural place is a file in `_manual_`, since goals are hand-written and not
+The natural place is a file in `_manual`, since goals are hand-written and not
 imported from a bank.
 
-Create `sources/_manual_/{year}/budget.journal`:
+Create `sources/_manual/{year}/budget.journal`:
 
 ```ledger
-; sources/_manual_/2026/budget.journal
+; sources/_manual/2026/budget.journal
 
 ;; Monthly spending goals
 ~ monthly in 2026
@@ -37,7 +37,7 @@ Include the file from your year journal:
 include commodities.journal
 include accounts.journal
 include reports/2026-opening.journal
-include sources/_manual_/2026/budget.journal
+include sources/_manual/2026/budget.journal
 include sources/2026-imports.journal
 ```
 

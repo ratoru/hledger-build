@@ -189,7 +189,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("directories.journal", "journal")
 	v.SetDefault("directories.build", ".build")
 	v.SetDefault("directories.prices", "sources/prices")
-	v.SetDefault("directories.manual", "_manual_")
+	v.SetDefault("directories.manual", "_manual")
 	// Reports are enabled by default; users must explicitly set enabled=false to disable.
 	v.SetDefault("reports.transactions.enabled", true)
 	v.SetDefault("reports.accounts.enabled", true)
@@ -300,7 +300,7 @@ func Load(path string) (*Config, error) {
 
 // discoverSources walks the sources directory for subdirs containing a raw/ dir.
 // Returns source names as paths relative to sources/.
-// The special _manual_ directory is skipped.
+// The special _manual directory is skipped.
 func discoverSources(projectRoot string, dirs Directories) ([]string, error) {
 	sourcesDir := filepath.Join(projectRoot, dirs.Sources)
 	manualDir := dirs.Manual
@@ -352,7 +352,7 @@ func discoverSources(projectRoot string, dirs Directories) ([]string, error) {
 	return sources, nil
 }
 
-// discoverYears scans raw/{year}/, sources/_manual_/{year}/, and prices/{year}/
+// discoverYears scans raw/{year}/, sources/_manual/{year}/, and prices/{year}/
 // for 4-digit subdirectory names and returns the min and max years found.
 func discoverYears(projectRoot string, dirs Directories, sources []string) (int, int, error) {
 	yearSet := map[int]struct{}{}
@@ -386,7 +386,7 @@ func discoverYears(projectRoot string, dirs Directories, sources []string) (int,
 		}
 	}
 
-	// Scan sources/_manual_/{year}/
+	// Scan sources/_manual/{year}/
 	manualDir := filepath.Join(projectRoot, dirs.Sources, dirs.Manual)
 	if err := collectYears(manualDir); err != nil {
 		return 0, 0, err

@@ -98,7 +98,7 @@ func fixtureConfig(dir string) *config.Config {
 			Journal: "journal",
 			Build:   ".build",
 			Prices:  "sources/prices",
-			Manual:  "_manual_",
+			Manual:  "_manual",
 			Reports: "reports",
 		},
 		Pipeline: []config.Pipeline{

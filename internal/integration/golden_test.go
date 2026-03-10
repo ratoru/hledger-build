@@ -141,7 +141,7 @@ func TestGoldenPass2Steps(t *testing.T) {
 			Journal: "journal",
 			Build:   ".build",
 			Prices:  "sources/prices",
-			Manual:  "_manual_",
+			Manual:  "_manual",
 		},
 		Reports: config.Reports{
 			Transactions: config.BuiltinReport{Args: []string{"print"}, Enabled: true},

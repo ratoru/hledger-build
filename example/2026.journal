@@ -11,5 +11,5 @@
 include commodities.journal
 include accounts.journal
 include reports/2026-opening.journal
-include sources/_manual_/2026/*.journal
+include sources/_manual/2026/*.journal
 include sources/2026-imports.journal
