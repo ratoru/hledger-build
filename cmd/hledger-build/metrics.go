@@ -48,7 +48,7 @@ func newMetricsCmd() *cobra.Command {
 	cmd.Flags().IntVar(&flagYear, "year", 0, "year (required)")
 	cmd.Flags().IntVar(&flagFireFactor, "fire-factor", 25, "FIRE multiplier")
 	cmd.Flags().
-		StringSliceVar(&flagExcludeExpenses, "exclude-expenses", []string{"expenses:gross"}, "expense accounts to exclude from daily avg (comma-separated)")
+		StringSliceVar(&flagExcludeExpenses, "exclude-expenses", []string{"expenses:taxes"}, "expense accounts to exclude from daily avg (comma-separated)")
 	cmd.Flags().
 		StringSliceVar(&flagExcludeRevenue, "exclude-revenue", []string{"revenue:gift"}, "revenue accounts to exclude from daily avg (comma-separated)")
 	cmd.Flags().StringVar(&flagCashAssets, "cash-assets", "assets:cash", "liquid cash account for short runway")

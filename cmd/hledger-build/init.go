@@ -62,7 +62,7 @@ const defaultToml = `# hledger-build.toml
 # age         = 0           # Set your age to enable AAW/PAW wealth benchmarks (0 = skip)
 # currency    = ""          # e.g. "USD" to convert all values via --value=end
 # [reports.metrics.accounts]
-# exclude_expenses = ["expenses:gross"]   # payroll deductions excluded from daily avg
+# exclude_expenses = ["expenses:taxes"]   # income taxes excluded from daily avg
 # exclude_revenue  = ["revenue:gift"]     # windfalls excluded from daily avg
 # cash_assets      = "assets:cash"        # liquid account for short runway
 

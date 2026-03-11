@@ -387,7 +387,7 @@ Everything is optional.
 # currency  = ""      # e.g. "USD" to convert all values via --value=end
 
 # [reports.metrics.accounts]
-# exclude_expenses = ["expenses:gross"]   # payroll deductions, excluded from daily avg
+# exclude_expenses = ["expenses:taxes"]   # income taxes, excluded from daily avg
 # exclude_revenue  = ["revenue:gift"]     # windfalls, excluded from daily avg
 # cash_assets      = "assets:cash"        # liquid cash account for short runway
 ```
@@ -689,13 +689,19 @@ adjustment in `_manual`:
 
 ; [Added manually from payslip]
 2026-03-01 Payslip Adjustment
-  expenses:taxes                 $400.00
-  expenses:gross:retirement      $200.00
-  revenue:salary                 $-600.00
+  expenses:taxes                        $400.00   ; employee taxes
+  expenses:benefits                     $50.00    ; post-tax deductions (dental, vision)
+  assets:retirement:401k-pretax         $150.00   ; pre-tax 401k
+  assets:retirement:401k-roth           $100.00   ; post-tax Roth 401k
+  assets:retirement:hsa                 $50.00    ; pre-tax HSA
+  revenue:salary                       $-750.00
 ```
 
-The metrics report excludes `expenses:gross` by default when computing daily
-spending, so payroll deductions don't inflate your expense averages.
+Retirement contributions (401k, HSA) are **assets** — money you still own — not
+expenses. Only `expenses:taxes` and benefit premiums are true expenses here.
+
+The metrics report excludes `expenses:taxes` by default when computing daily
+spending, so income taxes don't inflate your expense averages.
 
 **Note:** This project uses `revenue:` as the top-level account for revenue.
 See [Account types](https://hledger.org/1.51/hledger.html#account-types).

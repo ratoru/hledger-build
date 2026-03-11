@@ -200,7 +200,7 @@ func Load(path string) (*Config, error) {
 	v.SetDefault("reports.budget.enabled", false)
 	v.SetDefault("reports.metrics.enabled", true)
 	v.SetDefault("reports.metrics.fire_factor", 25)
-	v.SetDefault("reports.metrics.accounts.exclude_expenses", []string{"expenses:gross"})
+	v.SetDefault("reports.metrics.accounts.exclude_expenses", []string{"expenses:taxes"})
 	v.SetDefault("reports.metrics.accounts.exclude_revenue", []string{"revenue:gift"})
 	v.SetDefault("reports.metrics.accounts.cash_assets", "assets:cash")
 

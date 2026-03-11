@@ -59,8 +59,8 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("Reports.Metrics.FireFactor = %d, want 25", cfg.Reports.Metrics.FireFactor)
 	}
 	if len(cfg.Reports.Metrics.Accounts.ExcludeExpenses) != 1 ||
-		cfg.Reports.Metrics.Accounts.ExcludeExpenses[0] != "expenses:gross" {
-		t.Errorf("Reports.Metrics.Accounts.ExcludeExpenses = %v, want [expenses:gross]",
+		cfg.Reports.Metrics.Accounts.ExcludeExpenses[0] != "expenses:taxes" {
+		t.Errorf("Reports.Metrics.Accounts.ExcludeExpenses = %v, want [expenses:taxes]",
 			cfg.Reports.Metrics.Accounts.ExcludeExpenses)
 	}
 	if len(cfg.Reports.Metrics.Accounts.ExcludeRevenue) != 1 ||
