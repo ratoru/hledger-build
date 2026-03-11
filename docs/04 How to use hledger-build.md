@@ -17,6 +17,19 @@ hledger-build         # run the full pipeline
 action immediately. Replace the sample files with your own statements and rules
 when you're ready.
 
+## Commands
+
+| Command                               | Description                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `hledger-build` / `hledger-build run` | Run the full pipeline                                                            |
+| `hledger-build init`                  | Scaffold a new project                                                           |
+| `hledger-build add year <YEAR>`       | Create directory structure for a new year and update `all.journal`               |
+| `hledger-build add source <name>`     | Scaffold a new data source with `raw/`, `main.rules`, and a `preprocess` stub    |
+| `hledger-build check`                 | Validate all year journals with `--strict` and report uncategorized transactions |
+| `hledger-build status`                | Show what would be rebuilt without executing                                     |
+| `hledger-build categorize`            | Interactive fzf workflow to write categorization rules                           |
+| `hledger-build clean`                 | Remove all generated files and reset the build cache                             |
+
 ## Directory layout
 
 After `hledger-build init`, your project looks like this:
@@ -24,6 +37,7 @@ After `hledger-build init`, your project looks like this:
 ```
 my-ledger/
 ├── hledger-build.toml          # config (everything is optional / has defaults)
+├── accounts.journal            # account declarations (used by `categorize` for account completion)
 ├── commodities.journal         # commodity format declarations (shared by all years)
 ├── all.journal                 # top-level file for ad-hoc multi-year queries
 ├── 2026.journal                # per-year entry point — YOU maintain this file
@@ -177,7 +191,8 @@ full rules reference.
 
 hledger-build needs a `{year}.journal` file at the project root for each year.
 **You create and maintain these files.** `hledger-build init` creates one for
-the current year; you must create new ones manually when you add a new year.
+the current year; use `hledger-build add year <YEAR>` to scaffold subsequent
+years (it also updates `all.journal` for you).
 
 The year journal is the entry point for report generation. **You do not need to
 list every source journal manually** — hledger-build auto-generates
@@ -230,6 +245,19 @@ commodity AAPL 1.0000
 Every year journal includes `commodities.journal` at the top. When you add a
 new commodity or asset, add its directive here once and all years pick it up
 automatically.
+
+`accounts.journal` declares every account you use with an `account` directive.
+It is optional for hledger itself but required for `hledger-build categorize`,
+which reads it to populate the account picker. Add a line whenever you introduce
+a new account:
+
+```ledger
+; accounts.journal
+account assets:mybank:checking
+account assets:cash
+account expenses:food:groceries
+account revenue:salary
+```
 
 ### Opening balances
 
@@ -307,6 +335,7 @@ Everything is optional.
 # hledger_binary = "hledger"
 # equity_query   = "assets|liabilities|debts"  # used for closing/opening journals
 # jobs           = 0                           # 0 = runtime.NumCPU()
+# check_query    = ""                          # hledger query to scope `check --strict` (e.g. "not:tag:skip")
 
 # ── Directory name overrides ──────────────────────────────────────────────────
 # [directories]
@@ -479,79 +508,19 @@ extra_deps = ["prices/2026/prices.csv"]
    regenerated automatically.
 3. **Review** `reports/{year}-unknown.journal` for unclassified transactions.
 4. **Categorize** unknowns: run `hledger-build categorize` (interactive fzf
-   workflow), or manually add rules to your `main.rules` file.
+   workflow), or manually add rules to your `main.rules` file. Use
+   `--source=name` to work on one source at a time when you have several.
 5. **Run again** to apply the new rules.
-6. **Commit** everything — raw exports, rules, journals, reports — to version
+6. **Check** with `hledger-build check` to validate all journals with
+   `--strict` and confirm no unknowns remain.
+7. **Commit** everything — raw exports, rules, journals, reports — to version
    control.
 
+To start fresh if something goes wrong, run `hledger-build clean` followed by
+`hledger-build run --force`. Use `hledger-build status` beforehand to see what the next
+build would do without running it.
+
 ## FAQ and Tips
-
-### Record your gross income {#gross-income}
-
-Accurate gross income helps with savings rate and tax calculations. Bank
-statements show only the net deposit. If you receive a salary, add a monthly
-adjustment in `_manual`:
-
-```ledger
-; [Auto-generated from bank statement]
-2026-03-01 Bank Deposit
-  assets:checking     $2800.00
-  revenue:salary      $-2800.00
-
-; [Added manually from payslip]
-2026-03-01 Payslip Adjustment
-  expenses:taxes                 $400.00
-  expenses:gross:retirement      $200.00
-  revenue:salary                 $-600.00
-```
-
-The metrics report excludes `expenses:gross` by default when computing daily
-spending, so payroll deductions don't inflate your expense averages.
-
-**Note:** This project uses `revenue:` as the top-level account for revenue.
-See [Account types](https://hledger.org/1.51/hledger.html#account-types).
-
-### How do you handle foreign currency transactions? {#foreign-currency}
-
-Record the native-currency cost on the expense posting using `@@` (total cost):
-
-```ledger
-2026-03-09 Foreign currency expense
-    assets:bank                    $-10.00
-    expenses:whatever          €11.65 @@ $10.00
-```
-
-hledger shows `€11.65` by default and `$10.00` when `--cost` is passed. The
-built-in income statement report already uses `--cost`, so foreign-currency
-expenses appear in your native currency automatically.
-
-When your bank statement embeds the foreign-currency amount in the description,
-use a `preprocess` script to extract three extra columns:
-
-| Column       | Example | Purpose                                             |
-| ------------ | ------- | --------------------------------------------------- |
-| `fxcurrency` | `€`     | Commodity identifier matching `commodities.journal` |
-| `fxamount`   | `8.50`  | Foreign amount (bare number, no symbol)             |
-| `fxcost`     | `10.00` | Absolute native cost for the `@@` annotation        |
-
-Then reference them in your `.rules` file. If `currency $` is set,
-use `currency2 %fxcurrency` in the foreign-currency rule to supply
-the right symbol for the second posting:
-
-```
-fields date, description, amount, fxcurrency, fxamount, fxcost
-
-if %fxamount .
-  currency2  %fxcurrency
-  amount2    %fxamount @@ $%fxcost
-```
-
-`fxcost` must be the absolute value of the native amount — rules don't support
-arithmetic, so the preprocess script needs to strip the sign.
-
-The example in `sources/mybank/checking/` demonstrates this end-to-end. See
-also the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
-for a worked example with a real bank CSV.
 
 ### How do you manage multiple years of financial data? {#multiple-years}
 
@@ -597,6 +566,13 @@ all.journal:
 ```
 
 #### Setting up a new year
+
+The easiest way is `hledger-build add year 2024`. It creates the directory
+structure under `sources/`, creates `2024.journal`, and updates `all.journal`
+with the right closing and opening includes — all in one step. Then run
+`hledger-build` to generate the opening balances from 2023's final state.
+
+If you prefer to do it manually, or want to understand what `add year` does:
 
 When you add `2024.journal` for the first time and already have `2023.journal`:
 
@@ -698,6 +674,73 @@ existing one:
 
 This approach is described in detail in
 [Full-fledged hledger](https://github.com/adept/full-fledged-hledger/wiki/Adding-more-accounts#lets-make-sure-that-transfers-are-not-double-counted).
+
+### Record your gross income {#gross-income}
+
+Accurate gross income helps with savings rate and tax calculations. Bank
+statements show only the net deposit. If you receive a salary, add a monthly
+adjustment in `_manual`:
+
+```ledger
+; [Auto-generated from bank statement]
+2026-03-01 Bank Deposit
+  assets:checking     $2800.00
+  revenue:salary      $-2800.00
+
+; [Added manually from payslip]
+2026-03-01 Payslip Adjustment
+  expenses:taxes                 $400.00
+  expenses:gross:retirement      $200.00
+  revenue:salary                 $-600.00
+```
+
+The metrics report excludes `expenses:gross` by default when computing daily
+spending, so payroll deductions don't inflate your expense averages.
+
+**Note:** This project uses `revenue:` as the top-level account for revenue.
+See [Account types](https://hledger.org/1.51/hledger.html#account-types).
+
+### How do you handle foreign currency transactions? {#foreign-currency}
+
+Record the native-currency cost on the expense posting using `@@` (total cost):
+
+```ledger
+2026-03-09 Foreign currency expense
+    assets:bank                    $-10.00
+    expenses:whatever          €11.65 @@ $10.00
+```
+
+hledger shows `€11.65` by default and `$10.00` when `--cost` is passed. The
+built-in income statement report already uses `--cost`, so foreign-currency
+expenses appear in your native currency automatically.
+
+When your bank statement embeds the foreign-currency amount in the description,
+use a `preprocess` script to extract three extra columns:
+
+| Column       | Example | Purpose                                             |
+| ------------ | ------- | --------------------------------------------------- |
+| `fxcurrency` | `€`     | Commodity identifier matching `commodities.journal` |
+| `fxamount`   | `8.50`  | Foreign amount (bare number, no symbol)             |
+| `fxcost`     | `10.00` | Absolute native cost for the `@@` annotation        |
+
+Then reference them in your `.rules` file. If `currency $` is set,
+use `currency2 %fxcurrency` in the foreign-currency rule to supply
+the right symbol for the second posting:
+
+```
+fields date, description, amount, fxcurrency, fxamount, fxcost
+
+if %fxamount .
+  currency2  %fxcurrency
+  amount2    %fxamount @@ $%fxcost
+```
+
+`fxcost` must be the absolute value of the native amount — rules don't support
+arithmetic, so the preprocess script needs to strip the sign.
+
+The example in `sources/mybank/checking/` demonstrates this end-to-end. See
+also the [full-fledged-hledger guide](https://github.com/adept/full-fledged-hledger/wiki/Foreign-currency)
+for a worked example with a real bank CSV.
 
 ### How do you rebuild automatically when files change? {#watch-mode}
 
