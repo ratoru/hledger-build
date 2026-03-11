@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 func newMetricsCmd() *cobra.Command {
@@ -59,8 +60,6 @@ func newMetricsCmd() *cobra.Command {
 }
 
 // runMetrics runs hledger queries, computes metrics, and writes the report to stdout.
-//
-//nolint:gocyclo // financial metrics require building many dynamic queries and conditional table columns
 func runMetrics(
 	ctx context.Context,
 	journalFile string,
@@ -86,19 +85,16 @@ func runMetrics(
 		baseArgs = append(baseArgs, "--value=end,"+currency)
 	}
 
-	runQuery := func(extraArgs ...string) (string, error) {
+	runQuery := func(qctx context.Context, extraArgs ...string) (string, error) {
 		args := append(append([]string{}, baseArgs...), extraArgs...)
-		cmd := exec.CommandContext(ctx,
-			cfg.HledgerBinary,
-			args...)
-		out, err := cmd.Output()
+		out, err := exec.CommandContext(qctx, cfg.HledgerBinary, args...).Output()
 		if err != nil {
 			return "", fmt.Errorf("hledger %v: %w", args, err)
 		}
 		return string(out), nil
 	}
 
-	// 1. Build and run Expenses query dynamically.
+	// Build query argument slices before launching goroutines.
 	expArgs := []string{"balance", "expenses"}
 	for _, ex := range excludeExpenses {
 		if ex != "" {
@@ -106,12 +102,7 @@ func runMetrics(
 		}
 	}
 	expArgs = append(expArgs, "--depth", "1")
-	expOut, err := runQuery(expArgs...)
-	if err != nil {
-		return err
-	}
 
-	// 2. Build and run Revenue query dynamically.
 	incArgs := []string{"balance", "revenue"}
 	for _, ex := range excludeRevenue {
 		if ex != "" {
@@ -119,28 +110,43 @@ func runMetrics(
 		}
 	}
 	incArgs = append(incArgs, "--depth", "1")
-	incOut, err := runQuery(incArgs...)
-	if err != nil {
-		return err
-	}
 
-	// 3. Build and run Gross Deductions query dynamically.
-	grossArgs := []string{"balance"}
-	grossArgs = append(grossArgs, excludeExpenses...)
-	grossOut, err := runQuery(grossArgs...)
-	if err != nil {
-		return err
-	}
-	assetsOut, err := runQuery("balance", "assets", "--historical", "--depth", "1")
-	if err != nil {
-		return err
-	}
-	liabOut, err := runQuery("balance", "liabilities", "--historical", "--depth", "1")
-	if err != nil {
-		return err
-	}
-	cashOut, err := runQuery("balance", cashAssets, "--historical")
-	if err != nil {
+	grossArgs := append([]string{"balance"}, excludeExpenses...)
+
+	// Run all 6 hledger queries in parallel — they are fully independent.
+	var expOut, incOut, grossOut, assetsOut, liabOut, cashOut string
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var queryErr error
+		expOut, queryErr = runQuery(gctx, expArgs...)
+		return queryErr
+	})
+	g.Go(func() error {
+		var queryErr error
+		incOut, queryErr = runQuery(gctx, incArgs...)
+		return queryErr
+	})
+	g.Go(func() error {
+		var queryErr error
+		grossOut, queryErr = runQuery(gctx, grossArgs...)
+		return queryErr
+	})
+	g.Go(func() error {
+		var queryErr error
+		assetsOut, queryErr = runQuery(gctx, "balance", "assets", "--historical", "--depth", "1")
+		return queryErr
+	})
+	g.Go(func() error {
+		var queryErr error
+		liabOut, queryErr = runQuery(gctx, "balance", "liabilities", "--historical", "--depth", "1")
+		return queryErr
+	})
+	g.Go(func() error {
+		var queryErr error
+		cashOut, queryErr = runQuery(gctx, "balance", cashAssets, "--historical")
+		return queryErr
+	})
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -281,9 +287,9 @@ func runMetrics(
 	}
 
 	// Calculate and print the Yearly Average row
-	daysInYear := 365.0
-	if year%4 == 0 && (year%100 != 0 || year%400 == 0) {
-		daysInYear = 366.0 // Handle leap years
+	var daysInYear float64
+	for m := time.January; m <= time.December; m++ {
+		daysInYear += float64(daysInMonth(year, m))
 	}
 	dailyExpYear := totalExp / daysInYear
 	dailyIncYear := totalInc / daysInYear

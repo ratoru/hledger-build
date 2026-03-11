@@ -17,8 +17,9 @@ import (
 	"sync/atomic"
 
 	"github.com/fatih/color"
-	"github.com/ratoru/hledger-build/internal/manifest"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/ratoru/hledger-build/internal/manifest"
 )
 
 var (

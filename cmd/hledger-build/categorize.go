@@ -18,8 +18,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/ratoru/hledger-build/internal/config"
 	"github.com/spf13/cobra"
+
+	"github.com/ratoru/hledger-build/internal/config"
 )
 
 // txn represents a single unknown transaction discovered from a report.
@@ -451,28 +452,31 @@ func convertDateToFormat(isoDate, format string) (string, error) {
 	return t.Format(strftimeToGo(format)), nil
 }
 
+// strftimeReplacer converts strftime format codes to Go time layout tokens.
+var strftimeReplacer = strings.NewReplacer(
+	"%-m", "1", // month, no leading zero
+	"%-d", "2", // day, no leading zero
+	"%-H", "15", // hour (24h), no leading zero - Go doesn't distinguish
+	"%-M", "4", // minute, no leading zero
+	"%-S", "5", // hour, no leading zero
+	"%Y", "2006",
+	"%y", "06",
+	"%m", "01",
+	"%d", "02",
+	"%b", "Jan", // abbreviated month name
+	"%h", "Jan", // same as %b in Haskell time
+	"%B", "January",
+	"%H", "15",
+	"%I", "03", // hour (12h), with leading zero
+	"%l", "3", // hour (12h), no leading zero
+	"%M", "04",
+	"%S", "05",
+	"%p", "PM",
+)
+
 // strftimeToGo converts a strftime format string to a Go time layout.
 func strftimeToGo(sfmt string) string {
-	return strings.NewReplacer(
-		"%-m", "1", // month, no leading zero
-		"%-d", "2", // day, no leading zero
-		"%-H", "15", // hour (24h), no leading zero - Go doesn't distinguish
-		"%-M", "4", // minute, no leading zero
-		"%-S", "5", // hour, no leading zero
-		"%Y", "2006",
-		"%y", "06",
-		"%m", "01",
-		"%d", "02",
-		"%b", "Jan", // abbreviated month name
-		"%h", "Jan", // same as %b in Haskell time
-		"%B", "January",
-		"%H", "15",
-		"%I", "03", // hour (12h), with leading zero
-		"%l", "3", // hour (12h), no leading zero
-		"%M", "04",
-		"%S", "05",
-		"%p", "PM",
-	).Replace(sfmt)
+	return strftimeReplacer.Replace(sfmt)
 }
 
 // ── CSV row lookup ─────────────────────────────────────────────────────────────

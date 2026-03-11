@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+
 	"github.com/ratoru/hledger-build/internal/manifest"
 	"github.com/ratoru/hledger-build/internal/passes"
 	"github.com/ratoru/hledger-build/internal/runner"
-	"github.com/spf13/cobra"
 )
 
 // passMode selects which build passes to execute.

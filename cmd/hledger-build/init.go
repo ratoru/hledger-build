@@ -180,7 +180,7 @@ account expenses:entertainment:nightlife
 
 account expenses:work
 
-; --- Travel (The Sandbox) ---
+; --- Travel ---
 ; Keeps vacation spending from ruining your daily food/transit averages.
 ; Use tags like trip:2026-hawaii on the transactions instead of making an account for the trip
 account expenses:travel:transit:flights

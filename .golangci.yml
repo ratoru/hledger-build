@@ -24,7 +24,7 @@ formatters:
     - golines # checks if code is formatted, and fixes long lines
 
     ## you may want to enable
-    - gci # checks if code and import statements are formatted, with additional rules
+    #- gci # disabled: conflicts with goimports local-prefixes grouping
     - gofmt # checks if the code is formatted according to 'gofmt' command
     #- gofumpt # enforces a stricter format than 'gofmt', while being backwards compatible
     #- swaggo # formats swaggo comments
@@ -36,7 +36,7 @@ formatters:
       # with the given prefixes are grouped after 3rd-party packages.
       # Default: []
       local-prefixes:
-        - github.com/my/project
+        - github.com/ratoru/hledger-build
 
     golines:
       # Target maximum line length.
@@ -465,8 +465,8 @@ linters:
       # forbidigo: fmt.Print* is intentional CLI/display output in cmd/ and runner.
       - path: '(cmd/|internal/runner/runner\.go)'
         linters: [forbidigo]
-      # gochecknoglobals: Cobra flag vars and color package vars are idiomatic globals.
-      - path: '(cmd/hledger-build/root\.go|internal/runner/runner\.go)'
+      # gochecknoglobals: Cobra flag vars, color package vars, and package-level replacers are idiomatic globals.
+      - path: '(cmd/hledger-build/root\.go|cmd/hledger-build/categorize\.go|internal/runner/runner\.go)'
         linters: [gochecknoglobals]
       # goconst: repeated display strings (em-dash, "hledger") are not worth extracting.
       - path: '(cmd/hledger-build/metrics\.go|internal/passes/pass1\.go)'
