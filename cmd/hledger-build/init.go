@@ -411,7 +411,10 @@ func runInit(ctx context.Context) error {
 
 	// Append .build/ to .gitignore if not already present.
 	gitignorePath := filepath.Join(cwd, ".gitignore")
-	if err := appendIfAbsent(gitignorePath, "# hledger-build dependencies\n.build/\n/hledger-build"); err != nil {
+	if err := appendIfAbsent(
+		gitignorePath,
+		"# hledger-build dependencies\n.build/\n/hledger-build\n.DS_Store",
+	); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not update .gitignore: %v\n", err)
 	} else {
 		fmt.Println("updated  .gitignore")

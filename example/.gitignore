@@ -1,3 +1,4 @@
 # hledger-build dependencies
 .build/
 /hledger-build
+.DS_Store
